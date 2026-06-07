@@ -1,0 +1,20 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.routers import webhook , chat
+
+app = FastAPI(title="SME AI Agent" , version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=True
+)
+
+@app.get("/health" , tags=["System"])
+def health_check():
+    return {"status" : "ok"}
+
+app.include_router(webhook.router)
+app.include_router(chat.router)
