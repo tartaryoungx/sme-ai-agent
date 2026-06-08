@@ -1,7 +1,8 @@
 from jose import jwt
+from app.config import settings
 import time
 
-SECRET_KEY = "XB2HK+Q7tMV+79IO0ZXwGe+640VXyzAJsZfuKeVMpuCCSHaRdQmQW1maxNhsDiniPTyw/bt/tx12W7btut3o8Q=="
+SECRET_KEY = settings.JWT_SECRET
 
 payload = {
     "sub": "user123",
