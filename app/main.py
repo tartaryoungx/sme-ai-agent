@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import webhook , chat
+from app.routers import webhook , chat , shop
 from app.middleware.token_logger import TokenLoggerMiddleware
 
 app = FastAPI(title="SME AI Agent" , version="1.0.0")
@@ -20,3 +20,4 @@ def health_check():
 
 app.include_router(webhook.router)
 app.include_router(chat.router)
+app.include_router(shop.router)

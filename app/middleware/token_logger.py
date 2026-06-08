@@ -1,7 +1,8 @@
 import time
-from starlette.middleware.base import BaseHTTPMiddleware
-from app.db import supabase
 
+from starlette.middleware.base import BaseHTTPMiddleware
+from app.database import supabase
+from app.config import settings
 
 class TokenLoggerMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -14,17 +15,19 @@ class TokenLoggerMiddleware(BaseHTTPMiddleware):
         shop_id = request.headers.get("X-Shop-Id")
 
         if shop_id:
-            supabase.table("token_usage").insert({
-                "shop_id": shop_id,
-                "session_id": request.headers.get("X-Session-Id"),
-                "model": "unknown",
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "cached_tokens": 0,
-                "cost_usd": 0,
-                "cache_hit": False,
-            }).execute()
-
-        print(f"Request finished in {latency_ms}ms")
-
+            try:
+                supabase.table("token_usage").insert({
+                    "shop_id": shop_id,
+                    "session_id": request.headers.get("X-Session-Id"),
+                    "model": "unknown",
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "cached_tokens": 0,
+                    "cost_usd": 0,
+                    "cache_hit": False,
+                }).execute()
+                print(f"Request finished in {latency_ms}ms")
+                
+            except Exception as e:
+                print("TOKEN LOG INSERT FAILED:", e)
         return response

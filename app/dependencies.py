@@ -24,6 +24,7 @@ async def verify_jwt_auth(
             settings.JWT_SECRET,
             algorithms=[settings.ALGORITHM]
         )
+        
         return payload
 
     except JWTError as e:

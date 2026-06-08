@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     SUPABASE_KEY: str = "placeholder_key"
     JWT_SECRET: str = "placeholder_secret"
     ALGORITHM: str = "HS256"
+    SUPABASE_SERVICE_ROLE_KEY: str
 
     class Config:
         env_file = ".env"
