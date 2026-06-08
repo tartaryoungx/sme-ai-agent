@@ -10,5 +10,5 @@ payload = {
 
 token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 print("Generated JWT Token:", token)
-print("Baerer " + token)
+print("Bearer " + token)
 
