@@ -3,9 +3,14 @@ from google import genai
 from google.genai import types
 from app.config import settings
 from langfuse import get_client
+from dotenv import load_dotenv
+from langfuse import get_client
+
+load_dotenv()
 
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 langfuse = get_client()
+print(langfuse.auth_check())
 
 print("LANGFUSE PUBLIC:", settings.LANGFUSE_PUBLIC_KEY[:10])
 print("LANGFUSE URL:", settings.LANGFUSE_BASE_URL)
@@ -27,8 +32,12 @@ def ask_gemini(message: str):
     with langfuse.start_as_current_observation(
         as_type="generation",
         name="gemini-response",
-        model="gemini-2.5-flash-lite"
+        model="gemini-2.5-flash-lite",
+
     ) as generation:
+        print("AUTH CHECK:", langfuse.auth_check())
+        print("TRACE ID:", generation.trace_id)
+        print("OBSERVATION ID:", generation.id)
         response = client.models.generate_content(
             model="gemini-2.5-flash-lite",
             contents=message,
