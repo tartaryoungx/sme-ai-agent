@@ -1,9 +1,11 @@
 .env
 .vscode/
 app/__pycache__/
-ai/__pycache__/
+app/ai/__pycache__/
 tests/__pycache__/
 middleware/__pycache__/
 ai/__pycache__/
 flow.txt
 test_token.py
+app/services/__pycache__/
+app/routers/__pycache__/

@@ -16,7 +16,8 @@ async def chat(
     shop_id: str = Depends(verify_shop) ,
     auth_data: dict = Depends(verify_jwt_auth)
 ):
-    response = ask_gemini(payload.message, shop_id)
+    response = ask_gemini(payload.message, shop_id, user_id=auth_data.get("sub"),   # <--- เพิ่มตรงนี้
+        session_id=payload.session_id)
 
     log_token_usage(
         shop_id=shop_id,
