@@ -1,0 +1,57 @@
+
+from google import genai
+from google.genai import types
+from app.config import settings
+from langfuse import get_client
+
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
+langfuse = get_client()
+
+print("LANGFUSE PUBLIC:", settings.LANGFUSE_PUBLIC_KEY[:10])
+print("LANGFUSE URL:", settings.LANGFUSE_BASE_URL)
+print("LANGFUSE SECRET:", settings.LANGFUSE_SECRET_KEY[:10])
+
+
+system_prompt = """คุณคือแอดมินขายสินค้า SME
+กฎ:
+- ตอบเป็นภาษาไทย
+- ตอบไม่เกิน 3 ประโยค
+- ถ้าถามเรื่องราคา ให้ตอบราคาโดยตรง
+- ถ้าข้อมูลไม่พอ ให้ถามกลับ 1 คำถาม
+- ห้ามเขียนเกิน 100 คำ
+- น้ำเสียงเป็นธรรมชาติ เป็นมิตร และเน้นช่วยปิดการขาย
+- ไม่ต้องใส่อีโมจิและสัญลักษณ์พิเศษใดๆ"""
+
+
+def ask_gemini(message: str):
+    with langfuse.start_as_current_observation(
+        as_type="generation",
+        name="gemini-response",
+        model="gemini-2.5-flash-lite"
+    ) as generation:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=message,
+            config=types.GenerateContentConfig(
+            system_instruction=system_prompt
+            )
+        )
+        usage = response.usage_metadata
+        generation.update(
+            input=message,
+            output=response.text,
+            usage_details={
+                "input": usage.prompt_token_count,
+                "output": usage.candidates_token_count,
+                "total": usage.total_token_count,
+            },
+        )
+
+    langfuse.flush()
+    print("LANGFUSE FLUSHED")
+    
+
+    return {
+        "text": response.text,
+        "usage": usage
+    }

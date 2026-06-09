@@ -2,6 +2,7 @@
 .vscode/
 app/__pycache__/
 tests/__pycache__/
-flow.txt
 middleware/__pycache__/
+ai/__pycache__/
+flow.txt
 test_token.py
