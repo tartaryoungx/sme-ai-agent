@@ -9,9 +9,7 @@ class Settings(BaseSettings):
     LANGFUSE_BASE_URL: str
     SUPABASE_SERVICE_ROLE_KEY: str
     GEMINI_API_KEY: str
-    LINE_CHANNEL_SECRET: str
-    LINE_CHANNEL_ACCESS_TOKEN: str
-    LINE_BOT_USER_ID: str
+   
 
     class Config:
         env_file = ".env"
