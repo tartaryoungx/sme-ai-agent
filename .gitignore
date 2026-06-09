@@ -1,6 +1,7 @@
 .env
 .vscode/
 app/__pycache__/
+ai/__pycache__/
 tests/__pycache__/
 middleware/__pycache__/
 ai/__pycache__/
