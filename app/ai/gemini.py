@@ -2,14 +2,16 @@
 from google import genai
 from google.genai import types
 from app.config import settings
-from langfuse import get_client
-from dotenv import load_dotenv
-from langfuse import get_client
-
-load_dotenv()
+from langfuse import Langfuse
 
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
-langfuse = get_client()
+
+langfuse = Langfuse(
+    public_key=settings.LANGFUSE_PUBLIC_KEY,
+    secret_key=settings.LANGFUSE_SECRET_KEY,
+    base_url=settings.LANGFUSE_BASE_URL,
+)
+
 print(langfuse.auth_check())
 
 print("LANGFUSE PUBLIC:", settings.LANGFUSE_PUBLIC_KEY[:10])
