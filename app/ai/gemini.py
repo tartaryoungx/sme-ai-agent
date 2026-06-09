@@ -14,10 +14,6 @@ langfuse = Langfuse(
 
 print(langfuse.auth_check())
 
-print("LANGFUSE PUBLIC:", settings.LANGFUSE_PUBLIC_KEY[:10])
-print("LANGFUSE URL:", settings.LANGFUSE_BASE_URL)
-print("LANGFUSE SECRET:", settings.LANGFUSE_SECRET_KEY[:10])
-
 
 system_prompt = """คุณคือแอดมินขายสินค้า SME
 กฎ:
@@ -30,16 +26,16 @@ system_prompt = """คุณคือแอดมินขายสินค้�
 - ไม่ต้องใส่อีโมจิและสัญลักษณ์พิเศษใดๆ"""
 
 
-def ask_gemini(message: str):
+def ask_gemini(message: str, shop_id: str):
     with langfuse.start_as_current_observation(
         as_type="generation",
         name="gemini-response",
         model="gemini-2.5-flash-lite",
+        metadata={
+            "shop_id": shop_id
+        },
 
     ) as generation:
-        print("AUTH CHECK:", langfuse.auth_check())
-        print("TRACE ID:", generation.trace_id)
-        print("OBSERVATION ID:", generation.id)
         response = client.models.generate_content(
             model="gemini-2.5-flash-lite",
             contents=message,
@@ -55,6 +51,9 @@ def ask_gemini(message: str):
                 "input": usage.prompt_token_count,
                 "output": usage.candidates_token_count,
                 "total": usage.total_token_count,
+            },
+            metadata={
+                "shop_id": shop_id
             },
         )
 
