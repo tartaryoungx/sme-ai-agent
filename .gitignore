@@ -9,3 +9,5 @@ flow.txt
 test_token.py
 app/services/__pycache__/
 app/routers/__pycache__/
+project_code.txt
+schema.sql
