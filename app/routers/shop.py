@@ -11,3 +11,15 @@ async def create_shop(name: str):
     }).execute()
 
     return result.data
+
+@router.get("")
+async def list_shops():
+
+    result = supabase.table("shops").select("*").execute()
+
+    return result.data
+
+@router.get("/{shop_name}")
+async def get_shop(shop_name: str):
+    result = supabase.table("shops").select("*").eq("name", shop_name).execute()
+    return result.data
