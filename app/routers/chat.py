@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from app.ai.gemini import ask_gemini
 from app.dependencies import verify_shop , verify_jwt_auth
-from app.services.token_usage import log_token_usage
 
 router = APIRouter(prefix="/api/v1" , tags=["Chat"])
 
@@ -18,13 +17,6 @@ async def chat(
 ):
     response = ask_gemini(payload.message, shop_id, user_id=auth_data.get("sub"),   # <--- เพิ่มตรงนี้
         session_id=payload.session_id)
-
-    log_token_usage(
-        shop_id=shop_id,
-        session_id=payload.session_id,
-        model="gemini-2.5-flash-lite",
-        usage=response["usage"]
-    )
     #todo send message to langchain agent + prompt caching
     return {
         "shop_id" : shop_id ,

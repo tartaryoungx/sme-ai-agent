@@ -1,7 +1,40 @@
+# File: app/routers/chat.py
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from app.ai.gemini import ask_gemini
+from app.dependencies import verify_shop , verify_jwt_auth
+from app.routers.webhook import line_webhook
+
+router = APIRouter(prefix="/api/v1" , tags=["Chat"])
+
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str | None = None
+
+@router.post("/chat")
+async def chat(
+    payload : ChatRequest ,
+    shop_id: str = Depends(verify_shop) ,
+    auth_data: dict = Depends(verify_jwt_auth)
+):
+    response = ask_gemini(payload.message, shop_id, user_id=auth_data.get("sub"),   # <--- เพิ่มตรงนี้
+        session_id=payload.session_id)
+    #todo send message to langchain agent + prompt caching
+    return {
+        "shop_id" : shop_id ,
+        "session_id": payload.session_id,
+        "user": auth_data["sub"],
+        "reply" : response["text"] ,
+        "status": "success",
+        "usage": response["usage"]
+    }
+
+# ==========================================
+
+# File: app/routers/webhook.py
 from fastapi import APIRouter, Request, BackgroundTasks
 from app.config import settings
 import requests
-from app.ai.gemini import ask_gemini
 
 router = APIRouter(prefix="/webhook" , tags=["webhook"])
 
@@ -22,8 +55,6 @@ async def line_webhook(request: Request , background_tasks : BackgroundTasks):
             print(background_tasks)
             print(reply_token)
 
-            response = ask_gemini(text)
-
             requests.post(
                 "https://api.line.me/v2/bot/message/reply",
                 headers={
@@ -32,14 +63,10 @@ async def line_webhook(request: Request , background_tasks : BackgroundTasks):
                 },
                 json={
                     "replyToken": reply_token,
-                    "messages": [{"type": "text", "text":  response["text"]}],
+                    "messages": [{"type": "text", "text": f"พิมควยไร: {text}"}],
                 },
             )
 
     #todo ai engineer implemnent ai agent to process the webhook data and perform necessary actions in the background
 
     return {"message" : "success"}
-
-
-
-

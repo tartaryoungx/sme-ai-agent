@@ -26,7 +26,7 @@ system_prompt = """คุณคือแอดมินขายสินค้�
 - น้ำเสียงเป็นธรรมชาติ เป็นมิตร และเน้นช่วยปิดการขาย
 - ไม่ต้องใส่อีโมจิและสัญลักษณ์พิเศษใดๆ"""
 
-def ask_gemini(message: str, shop_id: str, user_id: str = None, session_id: str = None):
+def ask_gemini(message: str, shop_id: str= None, user_id: str = None, session_id: str = None):
     
     # 2. ใช้ propagate_attributes ครอบบล็อกการทำงานหลักเอาไว้
     with propagate_attributes(user_id=user_id, session_id=session_id):
