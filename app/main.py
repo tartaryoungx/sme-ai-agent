@@ -21,4 +21,4 @@ app.include_router(webhook.router)
 app.include_router(chat.router)
 app.include_router(shop.router)
 app.include_router(knowledge.router)
-app.add_api_router(auth.router)  # ← เพิ่ม router ของ auth
+app.include_router(auth.router)  # ← เพิ่ม router ของ auth
