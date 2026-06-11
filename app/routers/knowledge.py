@@ -74,10 +74,20 @@ async def update_policy(
     payload: PolicyUpdate,
     auth: dict = Depends(verify_jwt_auth)
 ):
-    result = supabase.table("shop_policies")\
-        .upsert({"shop_id": shop_id, **payload.model_dump(exclude_none=True)})\
+    existing = supabase.table("shop_policies")\
+    .select("id")\
+    .eq("shop_id", shop_id)\
+    .execute()
+
+    if existing.data:
+        result = supabase.table("shop_policies")\
+        .update(payload.model_dump(exclude_none=True))\
+        .eq("shop_id", shop_id)\
         .execute()
-    return result.data
+    else:
+        result = supabase.table("shop_policies")\
+        .insert({"shop_id": shop_id, **payload.model_dump(exclude_none=True)})\
+        .execute()
 
 @router.get("/policy/{shop_id}")
 async def get_policy(shop_id: str):
