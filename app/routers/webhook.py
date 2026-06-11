@@ -19,8 +19,7 @@ async def line_webhook(request: Request , background_tasks : BackgroundTasks):
             reply_token = event["replyToken"]
             text = event["message"]["text"]
             print(f"Received message: {text}")
-            print(background_tasks)
-            print(reply_token)
+            print(event.keys())
 
             response = ask_gemini(text)
 
