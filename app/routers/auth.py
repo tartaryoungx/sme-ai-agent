@@ -1,14 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
 from app.database import supabase
 from app.config import settings
+import bcrypt
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class RegisterRequest(BaseModel):
     email: str
@@ -18,6 +16,12 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 def create_token(user_id: str, shop_id: str) -> str:
     payload = {
@@ -29,7 +33,6 @@ def create_token(user_id: str, shop_id: str) -> str:
 
 @router.post("/register")
 async def register(payload: RegisterRequest):
-    # เช็คว่า email ซ้ำไหม
     existing = supabase.table("users")\
         .select("id")\
         .eq("email", payload.email)\
@@ -38,7 +41,6 @@ async def register(payload: RegisterRequest):
     if existing.data:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # เช็คว่า shop มีอยู่จริง
     shop = supabase.table("shops")\
         .select("id")\
         .eq("id", payload.shop_id)\
@@ -47,8 +49,7 @@ async def register(payload: RegisterRequest):
     if not shop.data:
         raise HTTPException(status_code=404, detail="Shop not found")
 
-    # hash password แล้วบันทึก
-    hashed = pwd_context.hash(payload.password)
+    hashed = hash_password(payload.password)
     result = supabase.table("users").insert({
         "email": payload.email,
         "password_hash": hashed,
@@ -62,7 +63,6 @@ async def register(payload: RegisterRequest):
 
 @router.post("/login")
 async def login(payload: LoginRequest):
-    # หา user จาก email
     result = supabase.table("users")\
         .select("id, shop_id, password_hash")\
         .eq("email", payload.email)\
@@ -74,8 +74,7 @@ async def login(payload: LoginRequest):
 
     user = result.data
 
-    # เช็ค password
-    if not pwd_context.verify(payload.password, user["password_hash"]):
+    if not verify_password(payload.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_token(user["id"], user["shop_id"])
