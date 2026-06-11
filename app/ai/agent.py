@@ -89,23 +89,24 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             })
             reply = result.content
 
-            # ดึง token usage จาก LangChain response_metadata
-            usage_meta = result.response_metadata.get("usage_metadata", {})
-            input_tokens  = usage_meta.get("prompt_token_count", 0)
-            output_tokens = usage_meta.get("candidates_token_count", 0)
-            cached_tokens = usage_meta.get("cached_content_token_count", 0)
+            # ดึง token usage จาก LangChain AIMessage.usage_metadata (ไม่ใช่ response_metadata)
+            usage_meta   = result.usage_metadata or {}
+            input_tokens  = usage_meta.get("input_tokens", 0)
+            output_tokens = usage_meta.get("output_tokens", 0)
+            # cached tokens อยู่ใน input_token_details.cache_read (ถ้าใช้ cache)
+            cached_tokens = (usage_meta.get("input_token_details") or {}).get("cache_read", 0)
 
-            # DEBUG: ดูว่า metadata จริงๆ มีอะไร
             print("=== LANGFUSE DEBUG ===")
-            print("response_metadata keys:", list(result.response_metadata.keys()))
             print("usage_metadata:", usage_meta)
             print("tokens → input:", input_tokens, "output:", output_tokens, "cached:", cached_tokens)
             print("======================")
 
+            # Gemini 2.5 Flash Lite pricing (USD per 1M tokens)
             # https://ai.google.dev/pricing
             non_cached_tokens = input_tokens - cached_tokens
             input_cost  = (non_cached_tokens * 0.10 + cached_tokens * 0.025) / 1_000_000
             output_cost = output_tokens * 0.40 / 1_000_000
+
 
             generation.update(
                 input=message,
