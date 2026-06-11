@@ -105,17 +105,19 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
                 input=message,
                 output=reply,
                 usage={
-                    "input":        input_tokens,
-                    "output":       output_tokens,
-                    "total":        input_tokens + output_tokens,
-                    "input_cost":   input_cost,
-                    "output_cost":  output_cost,
-                    "total_cost":   input_cost + output_cost,
-                    "unit":         "TOKENS",
+                    "input":  input_tokens,
+                    "output": output_tokens,
+                    "total":  input_tokens + output_tokens,
+                    "unit":   "TOKENS",
+                },
+                cost_details={
+                    "input":  input_cost,
+                    "output": output_cost,
+                    "total":  input_cost + output_cost,
                 },
                 metadata={
-                    "shop_id":      shop_id,
-                    "cache_used":   cached,
+                    "shop_id":       shop_id,
+                    "cache_used":    cached,
                     "cached_tokens": cached_tokens,
                 },
             )
