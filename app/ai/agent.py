@@ -46,14 +46,15 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     history = get_history(sid)
 
     # ดึง cache_name ของ shop นี้ (สร้างใหม่ถ้ายังไม่มีหรือหมดอายุ)
-    # cache_name = get_or_create_cache(shop_id or "default")  # ← เพิ่ม
+    cache_name = get_or_create_cache(shop_id or "default")  # ← เพิ่ม
 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-lite",
-        google_api_key=settings.GEMINI_API_KEY,
-        temperature=0.7,
-        # cached_content=cache_name,  # ← เพิ่ม: บอก Gemini ให้ใช้ cache นี้
-    )
+    model="gemini-2.5-flash-lite",
+    google_api_key=settings.GEMINI_API_KEY,
+    temperature=0.7,
+    **({"cached_content": cache_name} if cache_name else {}),
+)
+
 
     chain = prompt | llm
 
@@ -64,7 +65,7 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             model="gemini-2.5-flash-lite",
             metadata={
                 "shop_id": shop_id,
-                # "cache_name": cache_name,  # ← log ด้วยว่าใช้ cache ไหน
+                "cache_name": cache_name,  # ← log ด้วยว่าใช้ cache ไหน
             },
         ) as generation:
 

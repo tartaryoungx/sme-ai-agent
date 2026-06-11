@@ -1,14 +1,13 @@
 from google import genai
 from google.genai import types
 from app.config import settings
+from app.services.knowledge import build_knowledge_base  # ← เพิ่ม import
 import time
 
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-# เก็บ cache ต่อ shop { shop_id: (cache_name, expire_time) }
 _cache_store: dict[str, tuple[str, float]] = {}
-
-CACHE_TTL_SECONDS = 3600  # 1 ชั่วโมง
+CACHE_TTL_SECONDS = 3600
 
 system_prompt = """คุณคือแอดมินขายสินค้า SME
 กฎ:
@@ -20,25 +19,24 @@ system_prompt = """คุณคือแอดมินขายสินค้�
 - น้ำเสียงเป็นธรรมชาติ เป็นมิตร และเน้นช่วยปิดการขาย
 - ไม่ต้องใส่อีโมจิและสัญลักษณ์พิเศษใดๆ"""
 
-def get_or_create_cache(shop_id: str, knowledge_base: str = "") -> str:
-    """
-    คืนค่า cache_name ของ shop
-    ถ้า cache หมดอายุหรือไม่มี → สร้างใหม่
-    """
+def get_or_create_cache(shop_id: str) -> str | None:
     now = time.time()
-    
-    # เช็คว่า cache ยังใช้ได้อยู่ไหม
+
     if shop_id in _cache_store:
         cache_name, expire_time = _cache_store[shop_id]
         if now < expire_time:
             print(f"CACHE HIT for shop {shop_id}: {cache_name}")
             return cache_name
-    
-    # สร้าง cache ใหม่
-    content_to_cache = system_prompt
-    if knowledge_base:
-        content_to_cache += f"\n\nข้อมูลสินค้าของร้าน:\n{knowledge_base}"
-    
+
+    # ดึง knowledge base ของร้าน
+    knowledge_base = build_knowledge_base(shop_id)
+
+    if not knowledge_base.strip():
+        print(f"[WARN] Shop {shop_id} has no knowledge base — skipping cache")
+        return None  # ← ไม่ cache ถ้าไม่มีข้อมูล
+
+    content_to_cache = system_prompt + "\n\nข้อมูลของร้าน:\n" + knowledge_base
+
     cache = client.caches.create(
         model="gemini-2.5-flash-lite",
         config=types.CreateCachedContentConfig(
@@ -52,35 +50,33 @@ def get_or_create_cache(shop_id: str, knowledge_base: str = "") -> str:
             display_name=f"shop-{shop_id}"
         )
     )
-    
+
     _cache_store[shop_id] = (cache.name, now + CACHE_TTL_SECONDS - 60)
     print(f"CACHE CREATED for shop {shop_id}: {cache.name}")
     return cache.name
 
 
 def ask_with_cache(message: str, shop_id: str, history: list = None) -> dict:
-    """
-    เรียก Gemini โดยใช้ context cache แทน system prompt ปกติ
-    """
     cache_name = get_or_create_cache(shop_id)
-    
-    # build messages จาก history + message ใหม่
+
     contents = []
     for msg in (history or []):
-        contents.append(msg)  # HumanMessage / AIMessage จาก LangChain
+        contents.append(msg)
     contents.append(types.Content(
         role="user",
         parts=[types.Part(text=message)]
     ))
-    
+
+    config = types.GenerateContentConfig()
+    if cache_name:
+        config = types.GenerateContentConfig(cached_content=cache_name)
+
     response = client.models.generate_content(
         model="gemini-2.5-flash-lite",
         contents=contents,
-        config=types.GenerateContentConfig(
-            cached_content=cache_name,
-        )
+        config=config
     )
-    
+
     usage = response.usage_metadata
     return {
         "text": response.text,
