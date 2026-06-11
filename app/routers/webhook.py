@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from fastapi import APIRouter, Request, BackgroundTasks
 from app.config import settings
 import requests
-from app.ai.gemini import ask_gemini
+from app.ai.agent import ask_agent 
 import hmac, hashlib, base64
 from app.database  import supabase
 
@@ -56,7 +56,7 @@ async def line_webhook(shop_id: str, request: Request, background_tasks: Backgro
             print(f"Received message: {text}")
             print(event.keys())
 
-            response = ask_gemini(text
+            response = ask_agent(text
                 , shop_id=shop_id
                 , user_id=user_id
                 , session_id=user_id
