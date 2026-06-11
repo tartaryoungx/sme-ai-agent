@@ -1,17 +1,19 @@
 from app.database import supabase
-def log_token_usage(shop_id: str, session_id: str | None, model: str, usage, latency_ms: int,):
-            input_tokens = usage.prompt_token_count or 0
-            output_tokens = usage.candidates_token_count or 0
-            cached_tokens = getattr(usage, "cached_content_token_count", 0) or 0
+from app.services.norm import normalize_usage
+def log_token_usage(shop_id: str, model: str, usage, session_id: str | None = None, latency_ms: int | None = None,):
+            
+            usage_data = normalize_usage(usage)
+
+            print(usage_data)
             try:
                 supabase.table("token_usage").insert({
                     "shop_id": shop_id,
                     "session_id": session_id,
                     "model": model,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "cached_tokens": cached_tokens,
-                    "cache_hit": cached_tokens > 0,
+                    "input_tokens": usage_data["input_tokens"],
+                    "output_tokens": usage_data["output_tokens"],
+                    "cached_tokens": usage_data["cached_tokens"],
+                    "cache_hit": usage_data["cached_tokens"] > 0,
                     "latency_ms": latency_ms,
                     # "cost_usd": calculate_cost(...)
                 }).execute()

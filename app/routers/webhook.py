@@ -4,7 +4,6 @@ import traceback
 from fastapi import HTTPException
 
 from fastapi import APIRouter, Request, BackgroundTasks
-from app.config import settings
 import requests
 from app.ai.agent import ask_agent 
 import hmac, hashlib, base64
