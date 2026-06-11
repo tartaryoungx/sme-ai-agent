@@ -91,19 +91,32 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
 
             # ดึง token usage จาก LangChain response_metadata
             usage_meta = result.response_metadata.get("usage_metadata", {})
-            usage_details = {
-                "input": usage_meta.get("prompt_token_count", 0),
-                "output": usage_meta.get("candidates_token_count", 0),
-                "total": usage_meta.get("total_token_count", 0),
-            }
+            input_tokens  = usage_meta.get("prompt_token_count", 0)
+            output_tokens = usage_meta.get("candidates_token_count", 0)
+            cached_tokens = usage_meta.get("cached_content_token_count", 0)
+
+            # Gemini 2.5 Flash Lite pricing (USD per 1M tokens)
+            # https://ai.google.dev/pricing
+            non_cached_tokens = input_tokens - cached_tokens
+            input_cost  = (non_cached_tokens * 0.10 + cached_tokens * 0.025) / 1_000_000
+            output_cost = output_tokens * 0.40 / 1_000_000
 
             generation.update(
                 input=message,
                 output=reply,
-                usage_details=usage_details,
+                usage={
+                    "input":        input_tokens,
+                    "output":       output_tokens,
+                    "total":        input_tokens + output_tokens,
+                    "input_cost":   input_cost,
+                    "output_cost":  output_cost,
+                    "total_cost":   input_cost + output_cost,
+                    "unit":         "TOKENS",
+                },
                 metadata={
-                    "shop_id": shop_id,
-                    "cache_used": cached,
+                    "shop_id":      shop_id,
+                    "cache_used":   cached,
+                    "cached_tokens": cached_tokens,
                 },
             )
 
