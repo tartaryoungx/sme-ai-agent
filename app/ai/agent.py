@@ -3,6 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langfuse import Langfuse, propagate_attributes
 from app.config import settings
+from app.ai.cache_manager import get_or_create_cache  # ← เพิ่ม
 
 langfuse = Langfuse(
     public_key=settings.LANGFUSE_PUBLIC_KEY,
@@ -10,10 +11,8 @@ langfuse = Langfuse(
     base_url=settings.LANGFUSE_BASE_URL,
 )
 
-# memory store แยกตาม session — { session_id: list[BaseMessage] }
 _memory_store: dict[str, list[BaseMessage]] = {}
-
-MAX_HISTORY = 20  # 10 turns = 20 messages (human + ai)
+MAX_HISTORY = 20
 
 def get_history(session_id: str) -> list[BaseMessage]:
     return _memory_store.setdefault(session_id, [])
@@ -22,7 +21,6 @@ def save_history(session_id: str, human_msg: str, ai_msg: str) -> None:
     history = get_history(session_id)
     history.append(HumanMessage(content=human_msg))
     history.append(AIMessage(content=ai_msg))
-    # จำแค่ MAX_HISTORY messages ล่าสุด ประหยัด token
     if len(history) > MAX_HISTORY:
         _memory_store[session_id] = history[-MAX_HISTORY:]
 
@@ -47,13 +45,16 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     sid = session_id or user_id or "default"
     history = get_history(sid)
 
+    # ดึง cache_name ของ shop นี้ (สร้างใหม่ถ้ายังไม่มีหรือหมดอายุ)
+    cache_name = get_or_create_cache(shop_id or "default")  # ← เพิ่ม
+
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash-lite",
         google_api_key=settings.GEMINI_API_KEY,
         temperature=0.7,
+        cached_content=cache_name,  # ← เพิ่ม: บอก Gemini ให้ใช้ cache นี้
     )
 
-    # LCEL chain บริสุทธิ์ ไม่มี deprecated wrapper
     chain = prompt | llm
 
     with propagate_attributes(user_id=user_id, session_id=sid):
@@ -61,7 +62,10 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             as_type="generation",
             name="langchain-agent-response",
             model="gemini-2.5-flash-lite",
-            metadata={"shop_id": shop_id},
+            metadata={
+                "shop_id": shop_id,
+                "cache_name": cache_name,  # ← log ด้วยว่าใช้ cache ไหน
+            },
         ) as generation:
 
             result = chain.invoke({
@@ -77,8 +81,6 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             )
 
     langfuse.flush()
-
-    # บันทึก history หลัง invoke
     save_history(sid, message, reply)
 
     return {

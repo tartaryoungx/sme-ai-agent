@@ -20,9 +20,39 @@ jobs:
           python-version: "3.11.15"
 
       - name: Install Packages
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Test
-        run: |
-          echo "CI Working"
+      - name: Install Test Dependencies
+        run: pip install pytest httpx
+
+      - name: Run Tests     # ← แก้จาก echo เป็น pytest จริง
+        run: pytest tests/ -v
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_BOT_USER_ID: ${{ secrets.LINE_BOT_USER_ID }}
+
+  deploy:
+    needs: test           # ← deploy ต่อเมื่อ test ผ่านเท่านั้น
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'   # ← deploy เฉพาะ main branch
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        run: railway up --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
