@@ -52,5 +52,7 @@ def build_knowledge_base(shop_id: str) -> str:
             kb_parts.append(f"ช่องทางชำระเงิน: {p['payment_methods']}")
         if p.get("business_hours"):
             kb_parts.append(f"เวลาทำการ: {p['business_hours']}")
+        if p.get("about"):
+            kb_parts.append(f"ประวัติและข้อมูลร้าน: {p['about']}")
 
     return "\n".join(kb_parts)

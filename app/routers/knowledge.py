@@ -65,6 +65,7 @@ class PolicyUpdate(BaseModel):
     return_policy: str | None = None
     payment_methods: str | None = None
     business_hours: str | None = None
+    about: str | None = None  # ← เพิ่ม
 
 @router.put("/policy/{shop_id}")
 async def update_policy(
