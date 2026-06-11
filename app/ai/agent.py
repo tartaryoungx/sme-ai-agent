@@ -89,16 +89,25 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             })
             reply = result.content
 
+            # ดึง token usage จาก LangChain response_metadata
+            usage_meta = result.response_metadata.get("usage_metadata", {})
+            usage_details = {
+                "input": usage_meta.get("prompt_token_count", 0),
+                "output": usage_meta.get("candidates_token_count", 0),
+                "total": usage_meta.get("total_token_count", 0),
+            }
+
             generation.update(
                 input=message,
                 output=reply,
+                usage_details=usage_details,
                 metadata={
                     "shop_id": shop_id,
                     "cache_used": cached,
                 },
             )
 
-    langfuse.flush()
+            langfuse.flush()
     save_history(sid, message, reply)
 
     return {
