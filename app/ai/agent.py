@@ -64,7 +64,7 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             model="gemini-2.5-flash-lite",
             metadata={
                 "shop_id": shop_id,
-                "cache_name": cache_name,  # ← log ด้วยว่าใช้ cache ไหน
+                # "cache_name": cache_name,  # ← log ด้วยว่าใช้ cache ไหน
             },
         ) as generation:
 
