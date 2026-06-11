@@ -104,11 +104,10 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             generation.update(
                 input=message,
                 output=reply,
-                usage={
+                usage_details={
                     "input":  input_tokens,
                     "output": output_tokens,
                     "total":  input_tokens + output_tokens,
-                    "unit":   "TOKENS",
                 },
                 cost_details={
                     "input":  input_cost,
