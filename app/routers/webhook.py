@@ -1,4 +1,5 @@
 import json
+import traceback
 
 from fastapi import HTTPException
 
@@ -39,15 +40,17 @@ async def line_webhook(shop_id: str, request: Request, background_tasks: Backgro
     body = await request.body()
     signature = request.headers.get("X-Line-Signature", "")
 
+    if not shop.get("line_channel_secret"):
+        raise HTTPException(status_code=500, detail="Shop Line Channel Secret not configured")
+
     if not verify_line_signature(body, signature, shop["line_channel_secret"]):
         raise HTTPException(status_code=401, detail="Invalid signature")
     
-    data =  json.loads(body)
-    signature = request.headers.get("X-Line-Signature")
-    #print(type(data))
-    #print("events",data["events"][0]["message"].keys())
-    #print("event", data["events"]) 
-
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    
     for event in data.get("events", []):
         if event["type"] == "message" and event["message"]["type"] == "text":
             reply_token = event["replyToken"]
@@ -56,23 +59,39 @@ async def line_webhook(shop_id: str, request: Request, background_tasks: Backgro
             print(f"Received message: {text}")
             print(event.keys())
 
-            response = ask_agent(text
-                , shop_id=shop_id
-                , user_id=user_id
-                , session_id=user_id
-            )
+            try:
+                response = ask_agent(
+                    text,
+                    shop_id=shop_id,
+                    user_id=user_id,
+                    session_id=user_id,
+                )
+                reply_text = response["text"]
+            except Exception as e:
+                print(f"[ERROR] ask_agent failed for shop={shop_id} user={user_id}")
+                traceback.print_exc()
+                reply_text = "ขออภัยครับ ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้งนะครับ"
 
-            requests.post(
-                "https://api.line.me/v2/bot/message/reply",
-                headers={
-                    "Authorization": f"Bearer {shop['line_channel_access_token']}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "replyToken": reply_token,
-                    "messages": [{"type": "text", "text":  response["text"]}],
-                },
-            )
+            if not shop.get("line_channel_access_token"):
+                print(f"Error: Shop {shop_id} Line Channel Access Token not configured")
+                continue
+
+            try:
+                requests.post(
+                    "https://api.line.me/v2/bot/message/reply",
+                    headers={
+                        "Authorization": f"Bearer {shop['line_channel_access_token']}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "replyToken": reply_token,
+                        "messages": [{"type": "text", "text": reply_text}],
+                    },
+                    timeout=10,
+                )
+            except Exception as e:
+                print(f"[ERROR] LINE reply failed: {e}")
+                traceback.print_exc()
 
     #todo ai engineer implemnent ai agent to process the webhook data and perform necessary actions in the background
 
