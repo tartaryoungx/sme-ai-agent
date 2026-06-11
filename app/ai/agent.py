@@ -45,16 +45,29 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     sid = session_id or user_id or "default"
     history = get_history(sid)
 
-    # ดึง cache_name ของ shop นี้ (สร้างใหม่ถ้ายังไม่มีหรือหมดอายุ)
-    cache_name = get_or_create_cache(shop_id or "default")  # ← เพิ่ม
+    cache_result = get_or_create_cache(shop_id or "default")
+    cache_name = cache_result["cache_name"]
+    cached = cache_result["cached"]
+    knowledge_base = cache_result.get("knowledge_base", "")
+
+    # build system prompt ตาม cache status
+    full_system_prompt = system_prompt
+    if not cached and knowledge_base:
+        # fallback: inject knowledge base เข้า prompt ตรงๆ
+        full_system_prompt += f"\n\nข้อมูลของร้าน:\n{knowledge_base}"
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", full_system_prompt),
+        MessagesPlaceholder(variable_name="history"),
+        ("human", "{input}"),
+    ])
 
     llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash-lite",
-    google_api_key=settings.GEMINI_API_KEY,
-    temperature=0.7,
-    **({"cached_content": cache_name} if cache_name else {}),
-)
-
+        model="gemini-2.5-flash-lite",
+        google_api_key=settings.GEMINI_API_KEY,
+        temperature=0.7,
+        **({"cached_content": cache_name} if cache_name else {}),
+    )
 
     chain = prompt | llm
 
@@ -65,7 +78,8 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             model="gemini-2.5-flash-lite",
             metadata={
                 "shop_id": shop_id,
-                "cache_name": cache_name,  # ← log ด้วยว่าใช้ cache ไหน
+                "cache_used": cached,                              # ← log บอกว่าใช้ cache ไหม
+                "cache_reason": cache_result.get("reason", None), # ← log บอกเหตุผลถ้าไม่ได้ใช้
             },
         ) as generation:
 
@@ -78,7 +92,10 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             generation.update(
                 input=message,
                 output=reply,
-                metadata={"shop_id": shop_id},
+                metadata={
+                    "shop_id": shop_id,
+                    "cache_used": cached,
+                },
             )
 
     langfuse.flush()
@@ -87,4 +104,5 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     return {
         "text": reply,
         "session_id": sid,
+        "cache_used": cached,  # ← ส่งกลับให้ caller รู้ด้วย
     }
