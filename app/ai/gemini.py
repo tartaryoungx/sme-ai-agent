@@ -83,3 +83,4 @@ def ask_gemini(message: str, shop_id: str= None, user_id: str = None, session_id
         "text": response.text,
         "usage": usage
     }
+

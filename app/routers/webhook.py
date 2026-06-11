@@ -18,10 +18,11 @@ async def line_webhook(request: Request , background_tasks : BackgroundTasks):
         if event["type"] == "message":
             reply_token = event["replyToken"]
             text = event["message"]["text"]
+            session_id = event["source"]["userId"]
             print(f"Received message: {text}")
             print(event.keys())
 
-            response = ask_gemini(text)
+            response = ask_gemini(text, session_id=session_id)
 
             requests.post(
                 "https://api.line.me/v2/bot/message/reply",
