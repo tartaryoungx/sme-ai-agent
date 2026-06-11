@@ -39,6 +39,9 @@ async def line_webhook(shop_id: str, request: Request, background_tasks: Backgro
     body = await request.body()
     signature = request.headers.get("X-Line-Signature", "")
 
+    if not verify_line_signature(body, signature, shop["line_channel_secret"]):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    
     data =  json.loads(body)
     signature = request.headers.get("X-Line-Signature")
     #print(type(data))
