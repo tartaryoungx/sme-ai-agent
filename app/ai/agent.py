@@ -30,9 +30,10 @@ system_prompt = """คุณคือแอดมินขายสินค้�
 กฎ:
 - ตอบเป็นภาษาไทย
 - ตอบไม่เกิน 3 ประโยค
-- ถ้าถามเรื่องราคา ให้ตอบราคาโดยตรง
-- ถ้าข้อมูลไม่พอ ให้ถามกลับ 1 คำถาม
 - ห้ามเขียนเกิน 100 คำ
+- ถ้าถามเรื่องราคา ให้ตอบราคาโดยตรง
+- ถ้ามีข้อมูลของร้านหรือข้อมูลสินค้าให้ไว้ ให้ใช้ข้อมูลนั้นในการตอบทันที อย่าบอกว่าไม่มีข้อมูล
+- ถ้าข้อมูลไม่พอ ให้ถามกลับ 1 คำถาม
 - น้ำเสียงเป็นธรรมชาติ เป็นมิตร และเน้นช่วยปิดการขาย
 - ไม่ต้องใส่อีโมจิและสัญลักษณ์พิเศษใดๆ"""
 
@@ -76,9 +77,9 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     full_system_prompt = system_prompt
     if not cached and knowledge_base:
         # fallback: inject knowledge base เข้า prompt ตรงๆ (กรณีข้อมูลน้อยกว่า 2048 tokens)
-        full_system_prompt += f"\n\nข้อมูลของร้าน:\n{knowledge_base}"
+        full_system_prompt += f"\n\n[ข้อมูลของร้าน — ใช้ข้อมูลนี้ตอบลูกค้า]:\n{knowledge_base}"
     if rag_context:
-        full_system_prompt += f"\n\nข้อมูลที่เกี่ยวข้องกับคำถามนี้:\n{rag_context}"
+        full_system_prompt += f"\n\n[ข้อมูลที่ตรงกับคำถามของลูกค้า — ให้ตอบจากข้อมูลนี้เป็นหลัก]:\n{rag_context}"
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", full_system_prompt),
