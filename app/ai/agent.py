@@ -5,6 +5,7 @@ from langfuse import Langfuse, propagate_attributes
 from app.config import settings
 from app.ai.cache_manager import get_or_create_cache
 from app.ai.rag import search_docs
+from app.services.token_usage import log_token_usage
 
 langfuse = Langfuse(
     public_key=settings.LANGFUSE_PUBLIC_KEY,
@@ -53,14 +54,21 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
 
     # --- RAG: ค้นหา document ที่เกี่ยวข้องกับคำถาม ---
     rag_context = ""
+    docs = []  # init ก่อน เพื่อป้องกัน scope bug
     try:
         docs = search_docs(shop_id or "default", message, match_count=3)
+        print(f"[RAG] shop={shop_id} query='{message[:50]}' found={len(docs)} docs")
         if docs:
             rag_context = "\n".join(
                 f"- {d['content']}" for d in docs if d.get("content")
             )
+            print(f"[RAG CONTEXT]\n{rag_context[:300]}")
+        else:
+            print(f"[RAG] No matching documents found for shop={shop_id}")
     except Exception as e:
+        import traceback
         print(f"[RAG ERROR] {e}")
+        traceback.print_exc()
 
     # build system prompt ตาม cache status + RAG context
     full_system_prompt = system_prompt
@@ -94,7 +102,7 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
                 "shop_id": shop_id,
                 "cache_used": cached,
                 "cache_reason": cache_result.get("reason", None),
-                "rag_docs_count": len(docs) if 'docs' in dir() else 0,
+                "rag_docs_count": len(docs),
             },
         ) as generation:
 
@@ -121,6 +129,19 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
                 metadata={
                     "shop_id":       shop_id,
                     "cache_used":    cached,
+                    "cached_tokens": cached_tokens,
+                },
+            )
+
+            # log token usage (LLM call) ลง Supabase เพื่อให้ Railway log ตรงกับ Langfuse
+            log_token_usage(
+                shop_id=shop_id or "default",
+                session_id=sid,
+                model="gemini-2.5-flash-lite",
+                usage={
+                    "input_tokens":  input_tokens,
+                    "output_tokens": output_tokens,
+                    "total_tokens":  input_tokens + output_tokens,
                     "cached_tokens": cached_tokens,
                 },
             )

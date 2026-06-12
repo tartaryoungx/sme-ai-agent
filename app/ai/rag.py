@@ -45,12 +45,18 @@ def add_doc(shop_id: str, content: str):
         "embedding": embed(content, shop_id=shop_id)
     }).execute()
 
-def search_docs(shop_id: str, question: str, match_count: int = 3):
+def search_docs(shop_id: str, question: str, match_count: int = 3, match_threshold: float = 0.5):
+    embedding = embed(question, shop_id=shop_id)
+    print(f"[RAG SEARCH] shop={shop_id} threshold={match_threshold} count={match_count}")
+
     res = supabase.rpc("match_documents", {
-        "query_embedding": embed(question, shop_id=shop_id),
+        "query_embedding": embedding,
         "match_shop_id": shop_id,
-        "match_count": match_count
+        "match_count": match_count,
+        "match_threshold": match_threshold,
     }).execute()
 
-    return res.data or []
+    results = res.data or []
+    print(f"[RAG SEARCH] returned {len(results)} docs: {[d.get('content', '')[:60] for d in results]}")
+    return results
 
