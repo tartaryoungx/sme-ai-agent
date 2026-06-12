@@ -3,7 +3,8 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langfuse import Langfuse, propagate_attributes
 from app.config import settings
-from app.ai.cache_manager import get_or_create_cache  # ← เพิ่ม
+from app.ai.cache_manager import get_or_create_cache
+from app.ai.rag import search_docs
 
 langfuse = Langfuse(
     public_key=settings.LANGFUSE_PUBLIC_KEY,
@@ -50,11 +51,24 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     cached = cache_result["cached"]
     knowledge_base = cache_result.get("knowledge_base", "")
 
-    # build system prompt ตาม cache status
+    # --- RAG: ค้นหา document ที่เกี่ยวข้องกับคำถาม ---
+    rag_context = ""
+    try:
+        docs = search_docs(shop_id or "default", message, match_count=3)
+        if docs:
+            rag_context = "\n".join(
+                f"- {d['content']}" for d in docs if d.get("content")
+            )
+    except Exception as e:
+        print(f"[RAG ERROR] {e}")
+
+    # build system prompt ตาม cache status + RAG context
     full_system_prompt = system_prompt
     if not cached and knowledge_base:
-        # fallback: inject knowledge base เข้า prompt ตรงๆ
+        # fallback: inject knowledge base เข้า prompt ตรงๆ (กรณีข้อมูลน้อยกว่า 2048 tokens)
         full_system_prompt += f"\n\nข้อมูลของร้าน:\n{knowledge_base}"
+    if rag_context:
+        full_system_prompt += f"\n\nข้อมูลที่เกี่ยวข้องกับคำถามนี้:\n{rag_context}"
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", full_system_prompt),
@@ -78,8 +92,9 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             model="gemini-2.5-flash-lite",
             metadata={
                 "shop_id": shop_id,
-                "cache_used": cached,                              # ← log บอกว่าใช้ cache ไหม
-                "cache_reason": cache_result.get("reason", None), # ← log บอกเหตุผลถ้าไม่ได้ใช้
+                "cache_used": cached,
+                "cache_reason": cache_result.get("reason", None),
+                "rag_docs_count": len(docs) if 'docs' in dir() else 0,
             },
         ) as generation:
 

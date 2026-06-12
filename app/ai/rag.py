@@ -42,15 +42,15 @@ def add_doc(shop_id: str, content: str):
     supabase.table("documents").insert({
         "shop_id": shop_id,
         "content": content,
-        "embedding": embed(content, shop_id = "b5c79bc0-8e1b-46a7-a1d7-229b53f971de")
+        "embedding": embed(content, shop_id=shop_id)
     }).execute()
 
-def search_docs(shop_id: str, question: str):
+def search_docs(shop_id: str, question: str, match_count: int = 3):
     res = supabase.rpc("match_documents", {
-        "query_embedding": embed(question , shop_id = "b5c79bc0-8e1b-46a7-a1d7-229b53f971de"),
+        "query_embedding": embed(question, shop_id=shop_id),
         "match_shop_id": shop_id,
-        "match_count": 3
+        "match_count": match_count
     }).execute()
 
-    return res.data
+    return res.data or []
 
