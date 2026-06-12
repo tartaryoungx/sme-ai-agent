@@ -59,10 +59,12 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
         docs = search_docs(shop_id or "default", message, match_count=3)
         print(f"[RAG] shop={shop_id} query='{message[:50]}' found={len(docs)} docs")
         if docs:
+            # debug: แสดง keys และ content จริงๆ ของ doc แรก
+            print(f"[RAG DEBUG] doc[0] keys={list(docs[0].keys())}, content repr={repr(docs[0].get('content', 'KEY_NOT_FOUND'))}")
             rag_context = "\n".join(
                 f"- {d['content']}" for d in docs if d.get("content")
             )
-            print(f"[RAG CONTEXT]\n{rag_context[:300]}")
+            print(f"[RAG CONTEXT built] len={len(rag_context)}, preview={repr(rag_context[:100])}")
         else:
             print(f"[RAG] No matching documents found for shop={shop_id}")
     except Exception as e:
