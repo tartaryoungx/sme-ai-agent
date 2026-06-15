@@ -5,6 +5,7 @@
 * PDF
 * TXT
 * Raw Text (Swagger, FAQ, Product Info, Policy)
+* JSON From Front
 
 ---
 
