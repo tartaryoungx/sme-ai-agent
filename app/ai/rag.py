@@ -1,144 +1,193 @@
-import re
-import uuid
-from typing import Optional
+from typing import Any
 
 from google import genai
-from google.genai import types
-
-from app.database import supabase
-from app.config import settings
+from google.genai import types 
+import pymupdf4llm
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.services.token_usage import log_token_usage
+from app.config import settings
+from app.database import supabase
 
-
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
 EMBED_MODEL = "gemini-embedding-001"
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
+# ======================================================
+# Main Flow: PDF -> save Docs -> Chunks -> embeddings + save chunk
+# ======================================================
 
-IMPORTANT_HEADINGS = [
-    "ราคา",
-    "ค่าติดตั้ง",
-    "ค่าบริการ",
-    "การจัดส่ง",
-    "รับประกัน",
-    "สินค้า",
-    "รุ่น",
-    "FAQ",
-    "คำถามที่พบบ่อย",
-    "เงื่อนไข",
-    "โปรโมชัน",
-]
+def save_pdf_to_rag(
+    pdf_file_path: str,
+    shop_id: str | None, 
+    title: str | None,
+    filename: str,
+) -> dict[str, Any]:
 
+    document_id = create_document(
+        shop_id=shop_id,
+        title=title,
+        filename=filename,
+    )
+    try:
+        chunks = create_chunks(
+            pdf_path=pdf_file_path,
+        )
 
-def detect_heading(line: str) -> Optional[str]:
-    clean = line.strip()
+        save_chunks_to_db(
+            document_id=document_id,
+            chunks=chunks,
+            shop_id=shop_id,
+        )
+        mark_document_ready(document_id)
 
-    if not clean:
-        return None
+        return {
+            "document_id": document_id,
+            "chunks_count": len(chunks),
+            "status": "ready",
+        }
 
-    if clean.startswith("#"):
-        return clean.replace("#", "").strip()
+    except Exception:
+        mark_document_failed_safe(document_id)
+        raise
 
-    if re.match(r"^\d+[\.\)]\s+", clean):
-        return re.sub(r"^\d+[\.\)]\s+", "", clean).strip()
+#status
 
-    for heading in IMPORTANT_HEADINGS:
-        if heading in clean and len(clean) <= 80:
-            return clean
-
-    return None
-
-
-def split_blocks(text: str):
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-
-    # แยกตามย่อหน้าก่อน
-    paragraphs = re.split(r"\n\s*\n", text)
-
-    blocks = []
-
-    for paragraph in paragraphs:
-        paragraph = paragraph.strip()
-        if not paragraph:
-            continue
-
-        # ถ้าย่อหน้ายาวมาก ค่อยแยกตามบรรทัด
-        if len(paragraph) > 1600:
-            lines = [line.strip() for line in paragraph.split("\n") if line.strip()]
-            blocks.extend(lines)
-        else:
-            blocks.append(paragraph)
-
-    return blocks
-
-
-def chunk_text(text: str, chunk_size: int = 800, overlap: int = 120):
-    blocks = split_blocks(text)
-
-    chunks = []
-    current = ""
-    current_heading = None
-
-    def add_chunk(content: str, heading: Optional[str]):
-        content = content.strip()
-        if not content:
-            return
-
-        # ใส่ heading ซ้ำใน content เพื่อช่วย semantic search
-        if heading:
-            content = f"หัวข้อ: {heading}\n{content}"
-
-        chunks.append({
-            "content": content,
-            "heading": heading,
+def mark_document_ready(document_id: str) -> None:
+    response = (
+        supabase
+        .table("documents")
+        .update({
+            "status": "ready",
         })
+        .eq("id", document_id)
+        .execute()
+    )
 
-    for block in blocks:
-        heading = detect_heading(block)
+    if not response.data:
+        raise RuntimeError("mark_document_ready failed")
 
-        if heading:
-            add_chunk(current, current_heading)
-            current = ""
-            current_heading = heading
 
-        # ถ้า block เดี่ยวยาวเกิน chunk_size ให้แตกด้วย overlap
-        if len(block) > chunk_size:
-            add_chunk(current, current_heading)
-            current = ""
+def mark_document_failed(document_id: str) -> None:
+    (
+        supabase
+        .table("documents")
+        .update({
+            "status": "failed",
+        })
+        .eq("id", document_id)
+        .execute()
+    )
 
-            start = 0
-            while start < len(block):
-                end = start + chunk_size
-                piece = block[start:end].strip()
+def mark_document_failed_safe(document_id: str) -> None:
+    try:
+        mark_document_failed(document_id)
+    except Exception:
+        pass
 
-                if piece:
-                    add_chunk(piece, current_heading)
+def delete_document(document_id: str) -> None:
 
-                start += chunk_size - overlap
+    (
+        supabase
+        .table("documents")
+        .delete()
+        .eq("id", document_id)
+        .execute()
+    )
 
-            continue
+# ======================================================
+# DB: Add Documents in DB
+# ======================================================
 
-        # ถ้ารวมแล้วเกิน chunk_size ให้ปิด chunk ก่อน
-        if len(current) + len(block) + 2 > chunk_size:
-            old_tail = current[-overlap:] if current else ""
-            add_chunk(current, current_heading)
+def create_document(
+    filename: str,
+    shop_id: str | None = None,
+    title: str | None = None,
+) -> str:
 
-            current = ""
-            if old_tail:
-                current = old_tail.strip() + "\n\n"
+    data = {
+        "shop_id": shop_id,
+        "file_name": filename,
+        "title": title,
+        "status": "processing",
+    }
 
-        current += block + "\n\n"
+    response = (
+        supabase
+        .table("documents")
+        .insert(data)
+        .execute()
+    )
 
-    add_chunk(current, current_heading)
+    if not response.data:
+        raise RuntimeError("create_document failed")
+
+    return response.data[0]["id"]
+
+# ==================================================================
+# Chunk: PDF -> Chunks by "RecursiveCharacter Method"
+# ==================================================================
+
+def create_chunks(pdf_path, preview_count=5):
+    md_text = pymupdf4llm.to_markdown(pdf_path)
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1800,      # ประมาณ 400 tokens แบบหยาบ ๆ
+        chunk_overlap=270,    # ประมาณ 15%
+        separators=["\n\n", "\n", " ", ""]
+    )
+
+    chunks = splitter.split_text(md_text)
+
+#    print("Total chunks:", len(chunks))
+
+#    for i, chunk in enumerate(chunks[:preview_count]):
+#
+#        print("=" * 80)
+#        print(f"CHUNK {i+1}")
+#        print(chunk)
 
     return chunks
 
 
-def embed(text: str, shop_id: str | None = None):
-    token_result = client.models.count_tokens(
-        model=EMBED_MODEL,
-        contents=text,
-    )
+# ==================================================================
+# Embed & DB: Embed chunks and save in DB
+# ==================================================================
 
+def save_chunks_to_db(
+    document_id: str,
+    chunks: list[str],
+    shop_id: str | None,
+):
+        for i, chunk in enumerate(chunks):
+            vector = embed(
+            text=chunk,
+            shop_id=shop_id,
+            )
+
+            data = {
+                "document_id": document_id,
+                "shop_id": shop_id,
+                "chunk_index": i,
+                "content": chunk,
+                "embedding_text": None,
+                "heading": None,
+                "page_start": None,
+                "metadata": {},
+                "embedding": vector,
+            }
+            
+            response = (
+                supabase
+                .table("chunks")
+                .insert(data)
+                .execute()
+            )
+
+            if not response.data:
+                raise RuntimeError(f"save chunk failed at index {i}")
+
+
+#embed_chunks + token log
+def embed(text: str, shop_id: str | None = None):
     response = client.models.embed_content(
         model=EMBED_MODEL,
         contents=text,
@@ -149,13 +198,18 @@ def embed(text: str, shop_id: str | None = None):
 
     vector = response.embeddings[0].values
 
-    usage = {
-        "prompt_token_count": token_result.total_tokens,
-        "candidates_token_count": 0,
-        "total_token_count": token_result.total_tokens,
-    }
-
     if shop_id:
+        token_result = client.models.count_tokens(
+            model=EMBED_MODEL,
+            contents=text,
+        )
+
+        usage = {
+            "prompt_token_count": token_result.total_tokens,
+            "candidates_token_count": 0,
+            "total_token_count": token_result.total_tokens,
+        }
+
         log_token_usage(
             shop_id=shop_id,
             model=EMBED_MODEL,
@@ -164,64 +218,5 @@ def embed(text: str, shop_id: str | None = None):
 
     return vector
 
-
-def add_doc(
-    shop_id: str,
-    content: str,
-    source: str = "raw_text",
-    file_type: str = "text",
-):
-    document_id = str(uuid.uuid4())
-    chunks = chunk_text(content)
-
-    rows = []
-
-    for i, chunk in enumerate(chunks):
-        chunk_content = chunk["content"]
-
-        rows.append({
-            "shop_id": shop_id,
-            "content": chunk_content,
-            "chunk_index": i,
-            "embedding": embed(chunk_content, shop_id=shop_id),
-            "document_id": document_id,
-
-            # เพิ่ม metadata
-            "source": source,
-            "file_type": file_type,
-            "heading": chunk.get("heading"),
-        })
-
-    if rows:
-        supabase.table("documents").insert(rows).execute()
-
-    return {
-        "document_id": document_id,
-        "chunks_count": len(rows),
-    }
-
-
-def search_docs(shop_id: str, question: str, match_count: int = 3):
-    res = supabase.rpc("match_documents", {
-        "query_embedding": embed(question, shop_id),
-        "match_shop_id": shop_id,
-        "match_count": match_count,
-    }).execute()
-
-    return res.data
-
-
-def debug_chunks(content: str, limit: int = 10):
-    chunks = chunk_text(content)
-
-    print("TOTAL CHUNKS:", len(chunks))
-
-    for i, chunk in enumerate(chunks[:limit]):
-        print("=" * 80)
-        print("CHUNK:", i)
-        print("HEADING:", chunk.get("heading"))
-        print("LENGTH:", len(chunk["content"]))
-        print("-" * 80)
-        print(chunk["content"][:1000])
 
 

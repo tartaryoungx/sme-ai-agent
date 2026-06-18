@@ -11,3 +11,5 @@ google-genai>=2.8.0
 passlib[bcrypt]>=1.7.4
 bcrypt>=4.0.0
 pypdf>=6.13.2
+pymupdf4llm>=1.27.0
+python-multipart>=0.0.32

@@ -1,9 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import webhook, chat, shop, knowledge, auth  # ← เพิ่ม auth
+from app.routers import rag, webhook, chat, shop, knowledge, auth  # ← เพิ่ม auth
 
 from app.routers import webhook , chat , shop
-from app.featuresTest import rag_test
 
 app = FastAPI(title="SME AI Agent" , version="1.0.0")
 
@@ -24,4 +23,4 @@ app.include_router(chat.router)
 app.include_router(shop.router)
 app.include_router(knowledge.router)
 app.include_router(auth.router)  # ← เพิ่ม router ของ auth
-app.include_router(rag_test.router)
+app.include_router(rag.router) 
