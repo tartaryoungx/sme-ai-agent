@@ -3,9 +3,8 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langfuse import Langfuse, propagate_attributes
 from app.config import settings
-from app.ai.cache_manager import get_or_create_cache
-from app.ai.rag import search_docs
-from app.services.token_usage import log_token_usage
+from app.ai.cache_manager import get_or_create_cache  # ← เพิ่ม
+from app.ai.rag import retrieve_top_k
 
 langfuse = Langfuse(
     public_key=settings.LANGFUSE_PUBLIC_KEY,
@@ -30,10 +29,9 @@ system_prompt = """คุณคือแอดมินขายสินค้�
 กฎ:
 - ตอบเป็นภาษาไทย
 - ตอบไม่เกิน 3 ประโยค
-- ห้ามเขียนเกิน 100 คำ
 - ถ้าถามเรื่องราคา ให้ตอบราคาโดยตรง
-- ถ้ามีข้อมูลของร้านหรือข้อมูลสินค้าให้ไว้ ให้ใช้ข้อมูลนั้นในการตอบทันที อย่าบอกว่าไม่มีข้อมูล
 - ถ้าข้อมูลไม่พอ ให้ถามกลับ 1 คำถาม
+- ห้ามเขียนเกิน 100 คำ
 - น้ำเสียงเป็นธรรมชาติ เป็นมิตร และเน้นช่วยปิดการขาย
 - ไม่ต้องใส่อีโมจิและสัญลักษณ์พิเศษใดๆ"""
 
@@ -53,33 +51,37 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     cached = cache_result["cached"]
     knowledge_base = cache_result.get("knowledge_base", "")
 
-    # --- RAG: ค้นหา document ที่เกี่ยวข้องกับคำถาม ---
-    rag_context = ""
-    docs = []  # init ก่อน เพื่อป้องกัน scope bug
-    try:
-        docs = search_docs(shop_id or "default", message, match_count=3)
-        print(f"[RAG] shop={shop_id} query='{message[:50]}' found={len(docs)} docs")
-        if docs:
-            # debug: แสดง keys และ content จริงๆ ของ doc แรก
-            print(f"[RAG DEBUG] doc[0] keys={list(docs[0].keys())}, content repr={repr(docs[0].get('content', 'KEY_NOT_FOUND'))}")
-            rag_context = "\n".join(
-                f"- {d['content']}" for d in docs if d.get("content")
-            )
-            print(f"[RAG CONTEXT built] len={len(rag_context)}, preview={repr(rag_context[:100])}")
-        else:
-            print(f"[RAG] No matching documents found for shop={shop_id}")
-    except Exception as e:
-        import traceback
-        print(f"[RAG ERROR] {e}")
-        traceback.print_exc()
+    #tartar =========================================================
+    rag_chunks = retrieve_top_k(message, shop_id, k=3) if shop_id else []
 
-    # build system prompt ตาม cache status + RAG context
+    rag_context = "\n\n".join(
+        f"[ข้อมูล {i+1}]\n{chunk.get('content', '')}"
+        for i, chunk in enumerate(rag_chunks)
+        if chunk.get("content")
+    )
+    top_1_rag_content = rag_chunks[0].get("content") if rag_chunks else None
+    #tartar =========================================================
+
+    # build system prompt ตาม cache status
     full_system_prompt = system_prompt
-    if not cached and knowledge_base:
-        # fallback: inject knowledge base เข้า prompt ตรงๆ (กรณีข้อมูลน้อยกว่า 2048 tokens)
-        full_system_prompt += f"\n\n[ข้อมูลของร้าน — ใช้ข้อมูลนี้ตอบลูกค้า]:\n{knowledge_base}"
+
+    #tartar =========================================================
     if rag_context:
-        full_system_prompt += f"\n\n[ข้อมูลที่ตรงกับคำถามของลูกค้า — ให้ตอบจากข้อมูลนี้เป็นหลัก]:\n{rag_context}"
+        full_system_prompt += f"""
+
+    ข้อมูลอ้างอิงจากร้าน:
+    {rag_context}
+
+    กฎการใช้ข้อมูล:
+    - ใช้ข้อมูลอ้างอิงนี้ตอบลูกค้าเป็นหลัก
+    - ถ้าข้อมูลไม่พอ ให้ถามกลับ 1 คำถาม
+    - ห้ามแต่งข้อมูลเอง
+    """
+    #tartar =========================================================
+
+    if not cached and knowledge_base:
+        # fallback: inject knowledge base เข้า prompt ตรงๆ
+        full_system_prompt += f"\n\nข้อมูลของร้าน:\n{knowledge_base}"
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", full_system_prompt),
@@ -103,9 +105,8 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             model="gemini-2.5-flash-lite",
             metadata={
                 "shop_id": shop_id,
-                "cache_used": cached,
-                "cache_reason": cache_result.get("reason", None),
-                "rag_docs_count": len(docs),
+                "cache_used": cached,                              # ← log บอกว่าใช้ cache ไหม
+                "cache_reason": cache_result.get("reason", None), # ← log บอกเหตุผลถ้าไม่ได้ใช้
             },
         ) as generation:
 
@@ -136,24 +137,14 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
                 },
             )
 
-            # log token usage (LLM call) ลง Supabase เพื่อให้ Railway log ตรงกับ Langfuse
-            log_token_usage(
-                shop_id=shop_id or "default",
-                session_id=sid,
-                model="gemini-2.5-flash-lite",
-                usage={
-                    "input_tokens":  input_tokens,
-                    "output_tokens": output_tokens,
-                    "total_tokens":  input_tokens + output_tokens,
-                    "cached_tokens": cached_tokens,
-                },
-            )
-
             langfuse.flush()
     save_history(sid, message, reply)
 
     return {
         "text": reply,
         "session_id": sid,
-        "cache_used": cached,  # ← ส่งกลับให้ caller รู้ด้วย
+        "cache_used": cached,
+        "rag_used": bool(rag_context),
+        "rag_chunks_count": len(rag_chunks),
+        "top_1_rag": top_1_rag_content,
     }
