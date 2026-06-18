@@ -65,11 +65,18 @@ async def line_webhook(shop_id: str, request: Request, background_tasks: Backgro
                     user_id=user_id,
                     session_id=user_id,
                 )
-                reply_text = response["text"]
+                reply_text = response.get("text", "")
+                top_1_rag = response.get("top_1_rag")
+                print(top_1_rag)
             except Exception as e:
                 print(f"[ERROR] ask_agent failed for shop={shop_id} user={user_id}")
                 traceback.print_exc()
-                reply_text = "ขออภัยครับ ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้งนะครับ"
+                messages = [
+                    {
+                        "type": "text",
+                        "text": "ขออภัยครับ ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้งนะครับ",
+                    }
+                ]
 
             if not shop.get("line_channel_access_token"):
                 print(f"Error: Shop {shop_id} Line Channel Access Token not configured")

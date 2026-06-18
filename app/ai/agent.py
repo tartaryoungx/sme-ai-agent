@@ -4,6 +4,7 @@ from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langfuse import Langfuse, propagate_attributes
 from app.config import settings
 from app.ai.cache_manager import get_or_create_cache  # ← เพิ่ม
+from app.ai.rag import retrieve_top_k
 
 langfuse = Langfuse(
     public_key=settings.LANGFUSE_PUBLIC_KEY,
@@ -50,8 +51,34 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     cached = cache_result["cached"]
     knowledge_base = cache_result.get("knowledge_base", "")
 
+    #tartar =========================================================
+    rag_chunks = retrieve_top_k(message, shop_id, k=3) if shop_id else []
+
+    rag_context = "\n\n".join(
+        f"[ข้อมูล {i+1}]\n{chunk.get('content', '')}"
+        for i, chunk in enumerate(rag_chunks)
+        if chunk.get("content")
+    )
+    top_1_rag_content = rag_chunks[0].get("content") if rag_chunks else None
+    #tartar =========================================================
+
     # build system prompt ตาม cache status
     full_system_prompt = system_prompt
+
+    #tartar =========================================================
+    if rag_context:
+        full_system_prompt += f"""
+
+    ข้อมูลอ้างอิงจากร้าน:
+    {rag_context}
+
+    กฎการใช้ข้อมูล:
+    - ใช้ข้อมูลอ้างอิงนี้ตอบลูกค้าเป็นหลัก
+    - ถ้าข้อมูลไม่พอ ให้ถามกลับ 1 คำถาม
+    - ห้ามแต่งข้อมูลเอง
+    """
+    #tartar =========================================================
+
     if not cached and knowledge_base:
         # fallback: inject knowledge base เข้า prompt ตรงๆ
         full_system_prompt += f"\n\nข้อมูลของร้าน:\n{knowledge_base}"
@@ -116,5 +143,8 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     return {
         "text": reply,
         "session_id": sid,
-        "cache_used": cached,  # ← ส่งกลับให้ caller รู้ด้วย
+        "cache_used": cached,
+        "rag_used": bool(rag_context),
+        "rag_chunks_count": len(rag_chunks),
+        "top_1_rag": top_1_rag_content,
     }
