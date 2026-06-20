@@ -7,6 +7,7 @@ from app.ai.cache_manager import get_or_create_cache
 from app.ai.rag import search_docs
 from app.services.token_usage import log_token_usage
 from app.ai.semantic_cache import get_cached_answer, store_in_cache
+from app.ai.model_router import route_model, MODEL_LITE, MODEL_FLASH
 from app.ai.rag import retrieve_top_k
 
 langfuse = Langfuse(
@@ -128,11 +129,25 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
         ("human", "{input}"),
     ])
 
+    # ═══════════════════════════════════════════════════════
+    # Model Router — เลือกโมเดลตามความซับซ้อนของคำถาม
+    # Flash-Lite ($0.10/MTok) สำหรับคำถามง่าย
+    # Flash      ($0.30/MTok) สำหรับคำถามซับซ้อน
+    # ═══════════════════════════════════════════════════════
+    selected_model = route_model(message)
+
+    # Context cache ใช้ได้เฉพาะ Flash-Lite เท่านั้น
+    cache_kwargs = (
+        {"cached_content": cache_name}
+        if cache_name and selected_model == MODEL_LITE
+        else {}
+    )
+
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-lite",
+        model=selected_model,
         google_api_key=settings.GEMINI_API_KEY,
         temperature=0.7,
-        **({"cached_content": cache_name} if cache_name else {}),
+        **cache_kwargs,
     )
 
     chain = prompt | llm
@@ -141,9 +156,13 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
         with langfuse.start_as_current_observation(
             as_type="generation",
             name="langchain-agent-response",
-            model="gemini-2.5-flash-lite",
+            model=selected_model,
             metadata={
                 "shop_id": shop_id,
+                "model_selected": selected_model,
+                "cache_used": cached,
+                "cache_reason": cache_result.get("reason", None),
+                "rag_docs_count": len(docs),
                 "cache_used": cached,                              # ← log บอกว่าใช้ cache ไหม
                 "cache_reason": cache_result.get("reason", None), # ← log บอกเหตุผลถ้าไม่ได้ใช้
             },
@@ -176,6 +195,19 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
                 },
             )
 
+            # log token usage (LLM call) ลง Supabase เพื่อให้ Railway log ตรงกับ Langfuse
+            log_token_usage(
+                shop_id=shop_id or "default",
+                session_id=sid,
+                model=selected_model,
+                usage={
+                    "input_tokens":  input_tokens,
+                    "output_tokens": output_tokens,
+                    "total_tokens":  input_tokens + output_tokens,
+                    "cached_tokens": cached_tokens,
+                },
+            )
+
             langfuse.flush()
     save_history(sid, message, reply)
 
@@ -190,6 +222,7 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
         "session_id": sid,
         "cache_used": cached,
         "semantic_cache_hit": False,
+        "model_used": selected_model,
         "rag_used": bool(rag_context),
         "rag_chunks_count": len(rag_chunks),
         "top_1_rag": top_1_rag_content,
