@@ -4,7 +4,7 @@ def log_token_usage(shop_id: str, model: str, usage, session_id: str | None = No
             
             usage_data = normalize_usage(usage)
 
-            print(usage_data)
+            #print(usage_data)
             try:
                 supabase.table("token_usage").insert({
                     "shop_id": shop_id,
@@ -17,7 +17,7 @@ def log_token_usage(shop_id: str, model: str, usage, session_id: str | None = No
                     "latency_ms": latency_ms,
                     # "cost_usd": calculate_cost(...)
                 }).execute()
-                print(f"Logged token usage for shop_id: {shop_id}, session_id: {session_id}")
+#                print(f"Logged token usage for shop_id: {shop_id}, session_id: {session_id}")
                 
             except Exception as e:
                 print("TOKEN LOG INSERT FAILED:", e)
