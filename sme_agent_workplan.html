@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SME AI Agent — Work Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c0f;
+  --bg2: #111318;
+  --bg3: #181c22;
+  --border: #1e2530;
+  --border2: #2a3240;
+  --text: #e2e8f0;
+  --text2: #8899aa;
+  --text3: #4a5568;
+  --green: #22d3a0;
+  --green-dim: #0d3328;
+  --blue: #38bdf8;
+  --blue-dim: #0c2232;
+  --orange: #fb923c;
+  --orange-dim: #2a1500;
+  --purple: #a78bfa;
+  --purple-dim: #1e1035;
+  --yellow: #fbbf24;
+  --yellow-dim: #2a1f00;
+  --red: #f87171;
+  --red-dim: #2a0a0a;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans Thai', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { 
+  font-family: var(--sans); 
+  background: var(--bg); 
+  color: var(--text); 
+  line-height: 1.6;
+  font-size: 14px;
+}
+.page { max-width: 960px; margin: 0 auto; padding: 48px 24px; }
+
+/* Header */
+.header { margin-bottom: 56px; border-bottom: 1px solid var(--border2); padding-bottom: 32px; }
+.header-badge { 
+  font-family: var(--mono); font-size: 11px; color: var(--green);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.header-badge::before { content: ''; display: block; width: 24px; height: 1px; background: var(--green); }
+h1 { font-size: 32px; font-weight: 600; line-height: 1.2; margin-bottom: 12px; }
+h1 span { color: var(--green); }
+.header-meta { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 16px; }
+.meta-item { 
+  font-family: var(--mono); font-size: 12px; color: var(--text2);
+  background: var(--bg3); border: 1px solid var(--border); 
+  border-radius: 4px; padding: 4px 12px;
+}
+
+/* Section */
+.section { margin-bottom: 56px; }
+.section-header { 
+  display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.section-num { 
+  font-family: var(--mono); font-size: 11px; color: var(--text3);
+  background: var(--bg3); border: 1px solid var(--border2);
+  padding: 2px 8px; border-radius: 3px;
+}
+h2 { font-size: 18px; font-weight: 600; }
+h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+
+/* Team cards */
+.team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 32px; }
+.team-card { 
+  border: 1px solid var(--border2); border-radius: 8px; padding: 20px;
+  background: var(--bg2);
+}
+.team-role { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; margin-bottom: 8px; }
+.team-name { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+.team-stack { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+.chip { 
+  font-family: var(--mono); font-size: 10px; padding: 2px 7px; 
+  border-radius: 3px; border: 1px solid;
+}
+.task-list { list-style: none; }
+.task-list li { 
+  font-size: 13px; color: var(--text2); padding: 3px 0; padding-left: 16px;
+  position: relative;
+}
+.task-list li::before { content: '→'; position: absolute; left: 0; color: var(--text3); }
+
+/* Phase blocks */
+.phase { margin-bottom: 32px; }
+.phase-header { 
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+  padding: 12px 16px; border-radius: 6px; border: 1px solid;
+}
+.phase-num { 
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  padding: 3px 10px; border-radius: 3px; white-space: nowrap;
+}
+.phase-title { font-size: 15px; font-weight: 600; }
+.phase-duration { font-family: var(--mono); font-size: 11px; color: var(--text2); margin-left: auto; }
+
+.phase-m1 .phase-header { background: rgba(34,211,160,0.05); border-color: rgba(34,211,160,0.3); }
+.phase-m1 .phase-num { background: var(--green-dim); color: var(--green); }
+.phase-m2 .phase-header { background: rgba(56,189,248,0.05); border-color: rgba(56,189,248,0.3); }
+.phase-m2 .phase-num { background: var(--blue-dim); color: var(--blue); }
+.phase-m3 .phase-header { background: rgba(251,146,60,0.05); border-color: rgba(251,146,60,0.3); }
+.phase-m3 .phase-num { background: var(--orange-dim); color: var(--orange); }
+
+/* Sprint table */
+.sprint-grid { display: grid; grid-template-columns: 160px 1fr 1fr 1fr; gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+.sg-cell { background: var(--bg2); padding: 12px 14px; font-size: 13px; }
+.sg-header { background: var(--bg3); font-family: var(--mono); font-size: 11px; color: var(--text2); font-weight: 500; letter-spacing: 0.05em; }
+.sg-week { font-family: var(--mono); font-size: 11px; color: var(--text3); padding-top: 14px; }
+.task-item { margin-bottom: 4px; font-size: 12px; color: var(--text2); padding-left: 12px; position: relative; }
+.task-item::before { content: '·'; position: absolute; left: 3px; color: var(--text3); }
+.task-item.focus { color: var(--text); }
+.task-item.focus::before { content: '◆'; color: var(--green); font-size: 8px; top: 3px; }
+
+/* Pipeline diagram */
+.pipeline { margin-bottom: 24px; }
+.pipe-row { display: flex; align-items: stretch; gap: 0; margin-bottom: 2px; flex-wrap: wrap; }
+.pipe-node { 
+  flex: 1; min-width: 100px; border: 1px solid var(--border2); 
+  background: var(--bg2); padding: 12px 14px; font-size: 12px;
+  position: relative;
+}
+.pipe-node:not(:last-child)::after { 
+  content: '→'; position: absolute; right: -12px; top: 50%; 
+  transform: translateY(-50%); color: var(--text3); z-index: 1;
+  background: var(--bg); padding: 0 2px;
+}
+.pipe-label { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-bottom: 4px; letter-spacing: 0.06em; }
+.pipe-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.pipe-desc { font-size: 11px; color: var(--text2); line-height: 1.4; }
+.pipe-tech { font-family: var(--mono); font-size: 10px; margin-top: 6px; }
+
+/* Token pipeline */
+.token-flow { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.flow-title { font-family: var(--mono); font-size: 11px; color: var(--text2); letter-spacing: 0.08em; margin-bottom: 16px; text-transform: uppercase; }
+.flow-steps { display: flex; flex-direction: column; gap: 2px; }
+.flow-step { 
+  display: grid; grid-template-columns: 140px 1fr auto; 
+  align-items: center; gap: 12px; padding: 10px 14px;
+  border-radius: 4px; border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 12px;
+}
+.flow-step-num { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.flow-step-name { font-weight: 500; color: var(--text); }
+.flow-step-detail { font-size: 11px; color: var(--text2); }
+.flow-step-saving { font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+.connector { text-align: center; color: var(--text3); font-size: 11px; padding: 2px 0; font-family: var(--mono); }
+
+/* Code block */
+.code-block { 
+  background: var(--bg3); border: 1px solid var(--border2); 
+  border-radius: 6px; padding: 16px; margin-bottom: 16px;
+  font-family: var(--mono); font-size: 12px; line-height: 1.7;
+  overflow-x: auto;
+}
+.code-block .comment { color: var(--text3); }
+.code-block .keyword { color: var(--purple); }
+.code-block .string { color: var(--green); }
+.code-block .func { color: var(--blue); }
+.code-block .num { color: var(--orange); }
+
+/* Monitoring table */
+.monitor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.monitor-card { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 16px; }
+.monitor-title { font-family: var(--mono); font-size: 11px; color: var(--text2); margin-bottom: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+.metric-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.metric-row:last-child { border: none; }
+.metric-name { color: var(--text2); }
+.metric-val { font-family: var(--mono); font-weight: 500; }
+
+/* Timeline */
+.timeline { position: relative; padding-left: 32px; }
+.timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 1px; background: var(--border2); }
+.tl-item { position: relative; margin-bottom: 20px; }
+.tl-dot { 
+  position: absolute; left: -28px; top: 4px; width: 10px; height: 10px; 
+  border-radius: 50%; border: 2px solid; background: var(--bg);
+}
+.tl-week { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-bottom: 4px; letter-spacing: 0.06em; }
+.tl-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.tl-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.tl-deliverable { 
+  display: inline-block; margin-top: 6px; font-family: var(--mono); font-size: 10px;
+  padding: 2px 8px; border-radius: 3px; border: 1px solid;
+}
+
+/* Definition table */
+.def-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+.def-table th { 
+  font-family: var(--mono); font-size: 11px; color: var(--text2); font-weight: 500;
+  text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border2);
+  background: var(--bg3); letter-spacing: 0.05em;
+}
+.def-table td { 
+  font-size: 12px; padding: 10px 12px; border-bottom: 1px solid var(--border);
+  vertical-align: top; 
+}
+.def-table tr:last-child td { border: none; }
+.def-table td:first-child { font-family: var(--mono); font-size: 11px; color: var(--blue); white-space: nowrap; }
+.def-table td:nth-child(2) { color: var(--text2); }
+
+/* Alert box */
+.alert { 
+  border-radius: 6px; padding: 14px 16px; margin-bottom: 16px; 
+  font-size: 13px; border: 1px solid; line-height: 1.6;
+}
+.alert-green { background: var(--green-dim); border-color: rgba(34,211,160,0.3); color: var(--green); }
+.alert-blue { background: var(--blue-dim); border-color: rgba(56,189,248,0.3); color: var(--blue); }
+.alert-orange { background: var(--orange-dim); border-color: rgba(251,146,60,0.3); color: var(--orange); }
+.alert strong { font-weight: 600; }
+
+/* Grid 2 */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { 
+  .g2 { grid-template-columns: 1fr; }
+  .sprint-grid { grid-template-columns: 1fr; }
+  .flow-step { grid-template-columns: 1fr; }
+  .monitor-grid { grid-template-columns: 1fr; }
+}
+.tag-green { color: var(--green); }
+.tag-blue { color: var(--blue); }
+.tag-orange { color: var(--orange); }
+.tag-purple { color: var(--purple); }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- Header -->
+<div class="header">
+  <div class="header-badge">Work Plan</div>
+  <h1>SME AI Agent <span>Pipeline</span></h1>
+  <p style="color:var(--text2); font-size:14px; margin-top:8px;">แผนการทำงานแบบละเอียด — Token Monitoring · Optimization · Caching</p>
+  <div class="header-meta">
+    <span class="meta-item">3 คน · 3 เดือน</span>
+    <span class="meta-item">Gemini 2.5 Flash + Claude Haiku</span>
+    <span class="meta-item">LangChain · Langfuse · FastAPI</span>
+    <span class="meta-item">Target margin ≥60%</span>
+  </div>
+</div>
+
+<!-- 1. Team Structure -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2>ทีมและ Responsibility</h2>
+  </div>
+  <div class="team-grid">
+    <div class="team-card">
+      <div class="team-role" style="color:var(--green)">AI ENGINEER #1 — PIPELINE LEAD</div>
+      <div class="team-name">Token Optimization & Caching</div>
+      <div class="team-stack">
+        <span class="chip" style="color:var(--green);border-color:rgba(34,211,160,0.4)">LLM</span>
+        <span class="chip" style="color:var(--green);border-color:rgba(34,211,160,0.4)">RAG</span>
+        <span class="chip" style="color:var(--green);border-color:rgba(34,211,160,0.4)">Fine-tune</span>
+        <span class="chip" style="color:var(--green);border-color:rgba(34,211,160,0.4)">Langfuse</span>
+      </div>
+      <ul class="task-list">
+        <li>ออกแบบ token tracking schema ต่อ user/shop</li>
+        <li>ทำ prompt caching layer (Gemini context cache)</li>
+        <li>สร้าง semantic cache ด้วย vector similarity</li>
+        <li>วัด cache hit rate และ optimize</li>
+        <li>ตั้ง Langfuse observability ทั้งระบบ</li>
+        <li>ทำ model routing (Flash-Lite → Flash)</li>
+      </ul>
+    </div>
+    <div class="team-card">
+      <div class="team-role" style="color:var(--blue)">AI ENGINEER #2 — AGENT LEAD</div>
+      <div class="team-name">Agent Logic & RAG Pipeline</div>
+      <div class="team-stack">
+        <span class="chip" style="color:var(--blue);border-color:rgba(56,189,248,0.4)">LangChain</span>
+        <span class="chip" style="color:var(--blue);border-color:rgba(56,189,248,0.4)">RAG</span>
+        <span class="chip" style="color:var(--blue);border-color:rgba(56,189,248,0.4)">Deploy</span>
+        <span class="chip" style="color:var(--blue);border-color:rgba(56,189,248,0.4)">AIML</span>
+      </div>
+      <ul class="task-list">
+        <li>สร้าง agent tools (CRM, inventory, invoice)</li>
+        <li>ออกแบบ conversation memory strategy</li>
+        <li>ทำ context window compression</li>
+        <li>LINE Messaging API integration</li>
+        <li>Human handoff logic</li>
+        <li>Deploy และ scale บน Railway/Cloud Run</li>
+      </ul>
+    </div>
+    <div class="team-card">
+      <div class="team-role" style="color:var(--orange)">FULL-STACK DEV — PRODUCT LEAD</div>
+      <div class="team-name">Dashboard & API Layer</div>
+      <div class="team-stack">
+        <span class="chip" style="color:var(--orange);border-color:rgba(251,146,60,0.4)">Next.js</span>
+        <span class="chip" style="color:var(--orange);border-color:rgba(251,146,60,0.4)">FastAPI</span>
+        <span class="chip" style="color:var(--orange);border-color:rgba(251,146,60,0.4)">Supabase</span>
+        <span class="chip" style="color:var(--orange);border-color:rgba(251,146,60,0.4)">Stripe</span>
+      </div>
+      <ul class="task-list">
+        <li>Token usage dashboard สำหรับแต่ละร้าน</li>
+        <li>API gateway + rate limiting per shop</li>
+        <li>Billing system (usage → invoice)</li>
+        <li>Onboarding flow สำหรับ SME</li>
+        <li>Admin panel จัดการ customers</li>
+        <li>Alert system เมื่อ token ใกล้ quota</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Architecture Pipeline -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2>Architecture Pipeline ทั้งระบบ</h2>
+  </div>
+
+  <div class="flow-title" style="font-size:12px; color:var(--text2); margin-bottom:12px;">REQUEST FLOW — จากลูกค้าถึง response</div>
+  
+  <div class="pipeline">
+    <div class="pipe-row">
+      <div class="pipe-node" style="border-color:rgba(34,211,160,0.3)">
+        <div class="pipe-label" style="color:var(--green)">ENTRY</div>
+        <div class="pipe-name">LINE / Web</div>
+        <div class="pipe-desc">ลูกค้าส่งข้อความ ผ่าน webhook</div>
+        <div class="pipe-tech" style="color:var(--green)">LINE Messaging API</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-label">GATE</div>
+        <div class="pipe-name">API Gateway</div>
+        <div class="pipe-desc">Auth · Rate limit · Shop ID</div>
+        <div class="pipe-tech" style="color:var(--blue)">FastAPI + JWT</div>
+      </div>
+      <div class="pipe-node" style="border-color:rgba(167,139,250,0.3)">
+        <div class="pipe-label" style="color:var(--purple)">CACHE L1</div>
+        <div class="pipe-name">Semantic Cache</div>
+        <div class="pipe-desc">เช็คคำถามคล้ายกัน → ตอบทันที</div>
+        <div class="pipe-tech" style="color:var(--purple)">Redis + Qdrant</div>
+      </div>
+      <div class="pipe-node" style="border-color:rgba(251,191,36,0.3)">
+        <div class="pipe-label" style="color:var(--yellow)">ROUTER</div>
+        <div class="pipe-name">Model Router</div>
+        <div class="pipe-desc">จัดเส้นทาง Flash-Lite vs Flash</div>
+        <div class="pipe-tech" style="color:var(--yellow)">classifier model</div>
+      </div>
+    </div>
+    <div style="text-align:center; color:var(--text3); font-family:var(--mono); font-size:11px; padding:6px 0;">↓ cache miss → LLM call</div>
+    <div class="pipe-row">
+      <div class="pipe-node" style="border-color:rgba(167,139,250,0.3)">
+        <div class="pipe-label" style="color:var(--purple)">CACHE L2</div>
+        <div class="pipe-name">Prompt Cache</div>
+        <div class="pipe-desc">System prompt + KB cached ลด 90%</div>
+        <div class="pipe-tech" style="color:var(--purple)">Gemini context cache</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-label">COMPRESS</div>
+        <div class="pipe-name">Context Trim</div>
+        <div class="pipe-desc">ตัด history เกิน · summarize เก่า</div>
+        <div class="pipe-tech" style="color:var(--blue)">sliding window</div>
+      </div>
+      <div class="pipe-node" style="border-color:rgba(56,189,248,0.3)">
+        <div class="pipe-label" style="color:var(--blue)">LLM</div>
+        <div class="pipe-name">Gemini Flash</div>
+        <div class="pipe-desc">Generate + tool calling</div>
+        <div class="pipe-tech" style="color:var(--blue)">$0.30/$2.50 MTok</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-label">TRACK</div>
+        <div class="pipe-name">Token Logger</div>
+        <div class="pipe-desc">บันทึก usage ต่อ shop_id</div>
+        <div class="pipe-tech" style="color:var(--orange)">Langfuse + Supabase</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Token Monitoring & Caching Detail -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2>Token Monitoring · Optimization · Caching</h2>
+  </div>
+
+  <h3 style="color:var(--green); font-family:var(--mono); font-size:12px; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:16px;">3.1 — Token Tracking Schema</h3>
+  
+  <div class="code-block">
+<span class="comment">-- Supabase: token usage ต่อ shop และ session</span>
+<span class="keyword">CREATE TABLE</span> token_usage (
+  id          uuid <span class="keyword">DEFAULT</span> <span class="func">gen_random_uuid</span>(),
+  shop_id     uuid <span class="keyword">NOT NULL</span>,          <span class="comment">-- ร้านไหน</span>
+  session_id  text,                          <span class="comment">-- session ของลูกค้า</span>
+  model       text,                          <span class="comment">-- gemini-2.5-flash / haiku</span>
+  input_tokens   integer <span class="keyword">DEFAULT</span> <span class="num">0</span>,
+  output_tokens  integer <span class="keyword">DEFAULT</span> <span class="num">0</span>,
+  cached_tokens  integer <span class="keyword">DEFAULT</span> <span class="num">0</span>,      <span class="comment">-- tokens ที่ cache hit</span>
+  cost_usd    numeric(<span class="num">10</span>,<span class="num">8</span>) <span class="keyword">DEFAULT</span> <span class="num">0</span>,
+  cache_hit   boolean <span class="keyword">DEFAULT</span> false,      <span class="comment">-- semantic cache hit?</span>
+  created_at  timestamptz <span class="keyword">DEFAULT</span> <span class="func">now</span>()
+);
+
+<span class="comment">-- Monthly quota ต่อ shop (billing)</span>
+<span class="keyword">CREATE TABLE</span> shop_quota (
+  shop_id        uuid <span class="keyword">PRIMARY KEY</span>,
+  plan           text,                       <span class="comment">-- starter/standard/pro</span>
+  monthly_tokens integer <span class="keyword">DEFAULT</span> <span class="num">3000000</span>,  <span class="comment">-- 3M tokens/เดือน</span>
+  used_tokens    integer <span class="keyword">DEFAULT</span> <span class="num">0</span>,
+  alert_at       integer <span class="keyword">DEFAULT</span> <span class="num">80</span>,        <span class="comment">-- alert เมื่อใช้ 80%</span>
+  reset_date     date
+);
+  </div>
+
+  <h3 style="color:var(--purple); font-family:var(--mono); font-size:12px; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:16px; margin-top:24px;">3.2 — 3-Layer Caching Strategy</h3>
+
+  <div class="token-flow">
+    <div class="flow-title">CACHE LAYERS — ลำดับการเช็ก (ถูก → แพง)</div>
+    <div class="flow-steps">
+      <div class="flow-step" style="border-color:rgba(34,211,160,0.3); background:rgba(34,211,160,0.04)">
+        <div>
+          <div class="flow-step-num">LAYER 1</div>
+          <div class="flow-step-name" style="color:var(--green)">Semantic Cache (Redis + Vector)</div>
+        </div>
+        <div class="flow-step-detail">
+          เช็คว่าเคยมีคำถามคล้ายกัน (cosine similarity ≥ 0.92) → ตอบจาก cache เลย ไม่ยิง LLM<br>
+          <span style="font-family:var(--mono); font-size:10px; color:var(--text3)">เหมาะกับ: FAQ, ถามราคา, เวลาเปิดร้าน, ที่อยู่</span>
+        </div>
+        <div class="flow-step-saving" style="color:var(--green)">ประหยัด 100%<br><span style="font-size:10px">ไม่เสีย token เลย</span></div>
+      </div>
+      <div class="connector">↓ miss</div>
+      <div class="flow-step" style="border-color:rgba(167,139,250,0.3); background:rgba(167,139,250,0.04)">
+        <div>
+          <div class="flow-step-num">LAYER 2</div>
+          <div class="flow-step-name" style="color:var(--purple)">Prompt Cache (Gemini Context Cache)</div>
+        </div>
+        <div class="flow-step-detail">
+          Cache system prompt + knowledge base ของแต่ละร้าน ใน Gemini context cache<br>
+          input ซ้ำๆ ลด $3.00 → $0.30/MTok (90% off)<br>
+          <span style="font-family:var(--mono); font-size:10px; color:var(--text3)">TTL: 1 ชั่วโมง · auto-refresh ทุก session</span>
+        </div>
+        <div class="flow-step-saving" style="color:var(--purple)">ประหยัด ~60%<br><span style="font-size:10px">ของ input cost</span></div>
+      </div>
+      <div class="connector">↓ fresh call</div>
+      <div class="flow-step" style="border-color:rgba(251,191,36,0.3); background:rgba(251,191,36,0.04)">
+        <div>
+          <div class="flow-step-num">LAYER 3</div>
+          <div class="flow-step-name" style="color:var(--yellow)">Context Compression</div>
+        </div>
+        <div class="flow-step-detail">
+          Sliding window: เก็บแค่ 6 turns ล่าสุด + summary ของ turns เก่า<br>
+          ตัด redundant context ออกก่อนส่ง LLM<br>
+          <span style="font-family:var(--mono); font-size:10px; color:var(--text3)">ลด input tokens 20-40% ต่อ request</span>
+        </div>
+        <div class="flow-step-saving" style="color:var(--yellow)">ประหยัด 20-40%<br><span style="font-size:10px">ของ remaining</span></div>
+      </div>
+      <div class="connector">↓ LLM call with compressed context</div>
+      <div class="flow-step" style="border-color:rgba(56,189,248,0.3); background:rgba(56,189,248,0.04)">
+        <div>
+          <div class="flow-step-num">POST-CALL</div>
+          <div class="flow-step-name" style="color:var(--blue)">Token Logger → Langfuse → Supabase</div>
+        </div>
+        <div class="flow-step-detail">
+          บันทึก input/output/cached tokens, cost, latency, shop_id<br>
+          update shop_quota.used_tokens · trigger alert ถ้า ≥ 80%
+        </div>
+        <div class="flow-step-saving" style="color:var(--blue)">tracking<br><span style="font-size:10px">realtime</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="color:var(--blue); font-family:var(--mono); font-size:12px; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:16px; margin-top:24px;">3.3 — Model Routing Logic</h3>
+
+  <div class="code-block">
+<span class="comment"># model_router.py — AI Engineer #1 รับผิดชอบ</span>
+<span class="keyword">async def</span> <span class="func">route_model</span>(message: str, context: dict) -> str:
+    
+    <span class="comment"># STEP 1: เช็ค semantic cache ก่อน</span>
+    cached = <span class="keyword">await</span> <span class="func">semantic_cache.lookup</span>(message, shop_id=context[<span class="string">"shop_id"</span>])
+    <span class="keyword">if</span> cached: <span class="keyword">return</span> cached  <span class="comment"># ไม่เสีย token เลย</span>
+
+    <span class="comment"># STEP 2: classify complexity</span>
+    is_simple = <span class="func">classify_intent</span>(message)  <span class="comment"># Flash-Lite classifier</span>
+    
+    <span class="comment"># STEP 3: route ตาม complexity</span>
+    <span class="keyword">if</span> is_simple:
+        model = <span class="string">"gemini-2.5-flash-lite"</span>  <span class="comment"># $0.10/$0.40 MTok</span>
+        <span class="comment"># FAQ, เช็คเวลา, ถามราคาง่ายๆ</span>
+    <span class="keyword">else</span>:
+        model = <span class="string">"gemini-2.5-flash"</span>        <span class="comment"># $0.30/$2.50 MTok</span>
+        <span class="comment"># multi-step, tool-calling, complex CRM</span>
+
+    response = <span class="keyword">await</span> <span class="func">call_llm</span>(
+        model=model,
+        use_prompt_cache=<span class="keyword">True</span>,           <span class="comment"># LAYER 2 เสมอ</span>
+        compressed_context=<span class="func">trim_context</span>(context)  <span class="comment"># LAYER 3</span>
+    )
+    
+    <span class="comment"># STEP 4: บันทึก usage</span>
+    <span class="keyword">await</span> <span class="func">token_logger.record</span>(
+        shop_id=context[<span class="string">"shop_id"</span>],
+        model=model,
+        usage=response.usage,
+        cost=<span class="func">calc_cost</span>(response.usage, model)
+    )
+    
+    <span class="keyword">return</span> response
+  </div>
+
+  <h3 style="color:var(--orange); font-family:var(--mono); font-size:12px; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:16px; margin-top:24px;">3.4 — Dashboard Metrics (Full-Stack Dev)</h3>
+
+  <div class="monitor-grid">
+    <div class="monitor-card">
+      <div class="monitor-title" style="color:var(--green)">Per-Shop Token Dashboard</div>
+      <div class="metric-row"><span class="metric-name">tokens used / quota</span><span class="metric-val tag-green">real-time</span></div>
+      <div class="metric-row"><span class="metric-name">cost this month (฿)</span><span class="metric-val tag-green">auto-calc</span></div>
+      <div class="metric-row"><span class="metric-name">cache hit rate (%)</span><span class="metric-val tag-blue">target ≥60%</span></div>
+      <div class="metric-row"><span class="metric-name">avg tokens/message</span><span class="metric-val">trend chart</span></div>
+      <div class="metric-row"><span class="metric-name">top expensive queries</span><span class="metric-val tag-orange">top 10</span></div>
+    </div>
+    <div class="monitor-card">
+      <div class="monitor-title" style="color:var(--blue)">System-Wide Monitoring</div>
+      <div class="metric-row"><span class="metric-name">total API cost/day</span><span class="metric-val tag-blue">Langfuse</span></div>
+      <div class="metric-row"><span class="metric-name">gross margin live</span><span class="metric-val tag-green">≥60% target</span></div>
+      <div class="metric-row"><span class="metric-name">model distribution</span><span class="metric-val">Lite vs Flash</span></div>
+      <div class="metric-row"><span class="metric-name">latency p50/p99</span><span class="metric-val">ms</span></div>
+      <div class="metric-row"><span class="metric-name">error rate</span><span class="metric-val tag-orange">alert ≥1%</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Sprint Plan -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2>Sprint Plan — 12 สัปดาห์ (3 เดือน)</h2>
+  </div>
+
+  <!-- Month 1 -->
+  <div class="phase phase-m1">
+    <div class="phase-header">
+      <div class="phase-num">Month 1</div>
+      <div class="phase-title">Foundation — Infrastructure & Token Pipeline</div>
+      <div class="phase-duration">Week 1–4</div>
+    </div>
+
+    <div class="sprint-grid">
+      <div class="sg-cell sg-header">Sprint</div>
+      <div class="sg-cell sg-header" style="color:var(--green)">AI Eng #1 (Token/Cache)</div>
+      <div class="sg-cell sg-header" style="color:var(--blue)">AI Eng #2 (Agent)</div>
+      <div class="sg-cell sg-header" style="color:var(--orange)">FS Dev (Infra)</div>
+
+      <div class="sg-cell sg-week">Week 1<br>Setup</div>
+      <div class="sg-cell">
+        <div class="task-item focus">ตั้ง Langfuse self-host บน Railway</div>
+        <div class="task-item">สร้าง token_usage schema ใน Supabase</div>
+        <div class="task-item">ทดสอบ Gemini context cache API</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">ตั้ง LangChain + Gemini 2.5 Flash</div>
+        <div class="task-item">basic chat loop ทำงานได้</div>
+        <div class="task-item">LINE webhook รับ-ส่งข้อความ</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">ตั้ง FastAPI + Supabase + Railway</div>
+        <div class="task-item">JWT auth + shop_id header</div>
+        <div class="task-item">CI/CD via GitHub Actions</div>
+      </div>
+
+      <div class="sg-cell sg-week">Week 2<br>Token Core</div>
+      <div class="sg-cell">
+        <div class="task-item focus">ทำ token_logger middleware</div>
+        <div class="task-item focus">prompt cache wrapper (Gemini)</div>
+        <div class="task-item">unit test cache layer</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">RAG pipeline: chunking + embedding</div>
+        <div class="task-item">Qdrant vector store setup</div>
+        <div class="task-item">ทดสอบ retrieval quality</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">rate limiting per shop_id</div>
+        <div class="task-item">shop_quota table + quota check</div>
+        <div class="task-item">basic dashboard skeleton (Next.js)</div>
+      </div>
+
+      <div class="sg-cell sg-week">Week 3<br>Semantic Cache</div>
+      <div class="sg-cell">
+        <div class="task-item focus">ทำ semantic cache (Redis + vector)</div>
+        <div class="task-item focus">similarity threshold tuning</div>
+        <div class="task-item">วัด cache hit rate แรก</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">context compression (sliding window)</div>
+        <div class="task-item">conversation summarizer</div>
+        <div class="task-item">วัด token reduction</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">token usage API endpoint</div>
+        <div class="task-item">real-time usage chart (dashboard)</div>
+        <div class="task-item">alert email เมื่อ quota 80%</div>
+      </div>
+
+      <div class="sg-cell sg-week">Week 4<br>Routing</div>
+      <div class="sg-cell">
+        <div class="task-item focus">model router (Flash-Lite vs Flash)</div>
+        <div class="task-item">intent classifier สำหรับ routing</div>
+        <div class="task-item">integration test ทั้ง 3 layers</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item">agent tools v1 (check stock)</div>
+        <div class="task-item">tool-calling test กับ Gemini</div>
+        <div class="task-item">Langfuse trace ทุก LLM call</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">cost per shop report page</div>
+        <div class="task-item">margin calculator live</div>
+        <div class="task-item">load test API (k6)</div>
+      </div>
+    </div>
+
+    <div class="alert alert-green">
+      <strong>✓ Month 1 Deliverable:</strong> Token pipeline ทำงานครบ — track ได้ต่อ shop, cache 3 layers, model routing — วัด margin live ได้
+    </div>
+  </div>
+
+  <!-- Month 2 -->
+  <div class="phase phase-m2">
+    <div class="phase-header">
+      <div class="phase-num">Month 2</div>
+      <div class="phase-title">Agent Build — Customer Support + Sales CRM</div>
+      <div class="phase-duration">Week 5–8</div>
+    </div>
+
+    <div class="sprint-grid">
+      <div class="sg-cell sg-header">Sprint</div>
+      <div class="sg-cell sg-header" style="color:var(--green)">AI Eng #1</div>
+      <div class="sg-cell sg-header" style="color:var(--blue)">AI Eng #2</div>
+      <div class="sg-cell sg-header" style="color:var(--orange)">FS Dev</div>
+
+      <div class="sg-cell sg-week">Week 5</div>
+      <div class="sg-cell">
+        <div class="task-item focus">optimize prompt templates ลด token</div>
+        <div class="task-item">A/B test system prompts</div>
+        <div class="task-item">cache warmup strategy</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">Customer Support agent tools</div>
+        <div class="task-item">ticket create/update/close</div>
+        <div class="task-item">escalation to human logic</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">multi-tenant knowledge base UI</div>
+        <div class="task-item">file upload → auto-chunk → embed</div>
+        <div class="task-item">shop onboarding wizard</div>
+      </div>
+
+      <div class="sg-cell sg-week">Week 6</div>
+      <div class="sg-cell">
+        <div class="task-item">per-query cost breakdown</div>
+        <div class="task-item focus">cache hit dashboard live</div>
+        <div class="task-item">anomaly detection (spike alert)</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">Sales CRM agent tools</div>
+        <div class="task-item">lead capture + CRM sync</div>
+        <div class="task-item">deal stage update via LINE</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">webhook manager (per shop)</div>
+        <div class="task-item">LINE OA connect flow</div>
+        <div class="task-item">billing page + Stripe</div>
+      </div>
+
+      <div class="sg-cell sg-week">Week 7</div>
+      <div class="sg-cell">
+        <div class="task-item">fine-tune semantic cache threshold</div>
+        <div class="task-item focus">per-shop cache namespace</div>
+        <div class="task-item">token budget enforcement</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">integration test 2 agents</div>
+        <div class="task-item">multi-tool calling flow</div>
+        <div class="task-item">Google Sheets inventory connector</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">admin: ดู token ทุก shop</div>
+        <div class="task-item">export cost report (CSV)</div>
+        <div class="task-item">quota upgrade flow</div>
+      </div>
+
+      <div class="sg-cell sg-week">Week 8<br>Pilot</div>
+      <div class="sg-cell">
+        <div class="task-item focus">pilot monitoring — วัด cache hit จริง</div>
+        <div class="task-item">tune based on real data</div>
+        <div class="task-item">document optimization findings</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">pilot กับร้านค้า 3 เจ้า</div>
+        <div class="task-item">เก็บ feedback และ fix bugs</div>
+        <div class="task-item">measure response quality</div>
+      </div>
+      <div class="sg-cell">
+        <div class="task-item focus">pilot support dashboard live</div>
+        <div class="task-item">user feedback form</div>
+        <div class="task-item">SLA monitoring (uptime)</div>
+      </div>
+    </div>
+
+    <div class="alert alert-blue">
+      <strong>✓ Month 2 Deliverable:</strong> 2 agents production-ready, pilot 3 ร้าน, วัด cache hit rate จริง, dashboard ครบ
+    </div>
+  </div>
+
+  <!-- Month 3 -->
+  <div class="phase phase-m3">
+    <div class="phase-header">
+      <div class="phase-num">Month 3</div>
+      <div class="phase-title">Scale & Optimize — Launch Ready</div>
+      <div class="phase-duration">Week 9–12</div>
+    </div>
+
+    <div class="alert alert-orange">
+      <strong>Focus หลัก Month 3:</strong> optimize จาก data จริง, onboard ลูกค้าใหม่, เตรียม scale ถึง 100 ร้าน
+    </div>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot" style="border-color:var(--orange); background:var(--orange-dim)"></div>
+        <div class="tl-week">WEEK 9</div>
+        <div class="tl-title">Data-driven Optimization</div>
+        <div class="tl-desc">วิเคราะห์ pilot data — ดูว่า query ไหนแพงที่สุด, cache hit ต่ำที่สุด → ปรับ similarity threshold, เพิ่ม FAQ ใน semantic cache, tune context compression</div>
+        <div class="tl-deliverable" style="color:var(--orange); border-color:rgba(251,146,60,0.4)">target: cache hit rate ≥ 60%</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="border-color:var(--orange); background:var(--orange-dim)"></div>
+        <div class="tl-week">WEEK 10</div>
+        <div class="tl-title">Scale Infrastructure</div>
+        <div class="tl-desc">ทดสอบ load 100 concurrent users, ตั้ง horizontal scaling บน Cloud Run, Redis cluster สำหรับ semantic cache, Supabase connection pooling</div>
+        <div class="tl-deliverable" style="color:var(--orange); border-color:rgba(251,146,60,0.4)">target: handle 100 shops พร้อมกัน</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="border-color:var(--orange); background:var(--orange-dim)"></div>
+        <div class="tl-week">WEEK 11</div>
+        <div class="tl-title">Onboarding & Sales</div>
+        <div class="tl-desc">polish onboarding flow, สร้าง self-serve signup, document API สำหรับ partner integration, เตรียม pricing page และ free trial flow</div>
+        <div class="tl-deliverable" style="color:var(--orange); border-color:rgba(251,146,60,0.4)">target: onboard 10+ ร้านใหม่</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="border-color:var(--green); background:var(--green-dim)"></div>
+        <div class="tl-week">WEEK 12</div>
+        <div class="tl-title">Launch 🚀</div>
+        <div class="tl-desc">soft launch, monitor metrics realtime, เปิด free trial 14 วัน, เก็บ testimonials จาก pilot customers</div>
+        <div class="tl-deliverable" style="color:var(--green); border-color:rgba(34,211,160,0.4)">target: 20+ ร้าน paying</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. Token Targets -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2>Token Optimization Targets</h2>
+  </div>
+
+  <table class="def-table">
+    <tr>
+      <th>Metric</th>
+      <th>Baseline (ไม่ optimize)</th>
+      <th>Target (หลัง optimize)</th>
+      <th>วิธีทำ</th>
+    </tr>
+    <tr>
+      <td>cost/message</td>
+      <td style="color:var(--red)">฿0.80–1.20</td>
+      <td style="color:var(--green)">฿0.15–0.25</td>
+      <td>caching + routing + compression</td>
+    </tr>
+    <tr>
+      <td>semantic cache hit</td>
+      <td style="color:var(--text2)">0%</td>
+      <td style="color:var(--green)">40–60%</td>
+      <td>tune threshold, warm FAQ cache</td>
+    </tr>
+    <tr>
+      <td>prompt cache hit</td>
+      <td style="color:var(--text2)">0%</td>
+      <td style="color:var(--green)">70–90%</td>
+      <td>static system prompt + KB prefix</td>
+    </tr>
+    <tr>
+      <td>Flash-Lite routing</td>
+      <td style="color:var(--text2)">0%</td>
+      <td style="color:var(--green)">50–70% ของ requests</td>
+      <td>intent classifier ≥ 90% accuracy</td>
+    </tr>
+    <tr>
+      <td>avg input tokens</td>
+      <td style="color:var(--red)">2,000–3,000</td>
+      <td style="color:var(--green)">800–1,200</td>
+      <td>context compression + sliding window</td>
+    </tr>
+    <tr>
+      <td>gross margin</td>
+      <td style="color:var(--red)">20–35%</td>
+      <td style="color:var(--green)">≥ 65%</td>
+      <td>combination of all above</td>
+    </tr>
+  </table>
+</div>
+
+<!-- 6. Tech Stack Summary -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2>Tech Stack Summary</h2>
+  </div>
+
+  <div class="g2">
+    <div>
+      <table class="def-table">
+        <tr><th colspan="2">AI / LLM Layer</th></tr>
+        <tr><td>Primary LLM</td><td>Gemini 2.5 Flash (agent)</td></tr>
+        <tr><td>Triage LLM</td><td>Gemini 2.5 Flash-Lite (FAQ)</td></tr>
+        <tr><td>Embeddings</td><td>text-embedding-004 (Google)</td></tr>
+        <tr><td>Agent Framework</td><td>LangChain + Google ADK</td></tr>
+        <tr><td>Vector DB</td><td>Qdrant Cloud (free tier)</td></tr>
+        <tr><td>Observability</td><td>Langfuse (self-host)</td></tr>
+      </table>
+    </div>
+    <div>
+      <table class="def-table">
+        <tr><th colspan="2">Infrastructure</th></tr>
+        <tr><td>Backend</td><td>FastAPI (Python 3.12)</td></tr>
+        <tr><td>Frontend</td><td>Next.js 15 + Tailwind</td></tr>
+        <tr><td>Database</td><td>Supabase (PostgreSQL)</td></tr>
+        <tr><td>Cache</td><td>Redis (Upstash free tier)</td></tr>
+        <tr><td>Hosting</td><td>Railway / Cloud Run</td></tr>
+        <tr><td>Billing</td><td>Stripe</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div style="border-top:1px solid var(--border); padding-top:24px; margin-top:24px; font-family:var(--mono); font-size:11px; color:var(--text3); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+  <span>SME AI Agent Work Plan · 3 คน · 3 เดือน</span>
+  <span>Token Monitoring + Optimization + Caching Pipeline</span>
+</div>
+
+</div>
+</body>
+</html>

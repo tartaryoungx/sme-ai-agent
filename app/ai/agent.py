@@ -4,7 +4,6 @@ from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langfuse import Langfuse, propagate_attributes
 from app.config import settings
 from app.ai.cache_manager import get_or_create_cache
-from app.ai.rag import search_docs
 from app.services.token_usage import log_token_usage
 from app.ai.semantic_cache import get_cached_answer, store_in_cache
 from app.ai.model_router import route_model, MODEL_LITE, MODEL_FLASH
@@ -70,23 +69,7 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     cached = cache_result["cached"]
     knowledge_base = cache_result.get("knowledge_base", "")
 
-    rag_context = ""
-    docs = [] 
-    try:
-        docs = search_docs(shop_id or "default", message, match_count=3)
-        print(f"[RAG] shop={shop_id} query='{message[:50]}' found={len(docs)} docs")
-        if docs:
-            print(f"[RAG DEBUG] doc[0] keys={list(docs[0].keys())}, content repr={repr(docs[0].get('content', 'KEY_NOT_FOUND'))}")
-            rag_context = "\n".join(
-                f"- {d['content']}" for d in docs if d.get("content")
-            )
-            print(f"[RAG CONTEXT built] len={len(rag_context)}, preview={repr(rag_context[:100])}")
-        else:
-            print(f"[RAG] No matching documents found for shop={shop_id}")
-    except Exception as e:
-        import traceback
-        print(f"[RAG ERROR] {e}")
-        traceback.print_exc()
+    docs = []
 
     full_system_prompt = system_prompt
     if not cached and knowledge_base:
