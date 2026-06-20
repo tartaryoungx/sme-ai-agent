@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from jose import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.database import supabase
 from app.config import settings
 import bcrypt
@@ -27,7 +27,7 @@ def create_token(user_id: str, shop_id: str) -> str:
     payload = {
         "sub": user_id,
         "shop_id": shop_id,
-        "exp": datetime.utcnow() + timedelta(days=7)
+        "exp": datetime.now(timezone.utc) + timedelta(days=7)
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.ALGORITHM)
 

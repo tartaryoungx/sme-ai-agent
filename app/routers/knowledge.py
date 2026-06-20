@@ -89,6 +89,8 @@ async def update_policy(
         .insert({"shop_id": shop_id, **payload.model_dump(exclude_none=True)})\
         .execute()
 
+    return result.data
+
 @router.get("/policy/{shop_id}")
 async def get_policy(shop_id: str):
     result = supabase.table("shop_policies")\

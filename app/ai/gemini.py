@@ -4,7 +4,6 @@ import time
 from google import genai
 from google.genai import types
 from app.config import settings
-from langfuse import Langfuse
 from langfuse import Langfuse, propagate_attributes
 
 from app.services.token_usage import log_token_usage
@@ -17,7 +16,6 @@ langfuse = Langfuse(
     base_url=settings.LANGFUSE_BASE_URL,
 )
 
-print(langfuse.auth_check())
 
 
 system_prompt = """คุณคือแอดมินขายสินค้า SME
@@ -72,9 +70,9 @@ def ask_gemini(message: str, shop_id: str= None, user_id: str = None, session_id
             print("LANGFUSE FLUSHED")
 
             log_token_usage(
-                shop_id="b5c79bc0-8e1b-46a7-a1d7-229b53f971de",
+                shop_id=shop_id or "default",
                 session_id=session_id,
-                model="gemini-2.5-flash",
+                model="gemini-2.5-flash-lite",
                 usage=response.usage_metadata,
                 latency_ms=latency_ms,
             )

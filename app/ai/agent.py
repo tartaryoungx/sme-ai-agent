@@ -38,11 +38,6 @@ system_prompt = """คุณคือแอดมินขายสินค้�
 - น้ำเสียงเป็นธรรมชาติ เป็นมิตร และเน้นช่วยปิดการขาย
 - ไม่ต้องใส่อีโมจิและสัญลักษณ์พิเศษใดๆ"""
 
-prompt = ChatPromptTemplate.from_messages([
-    ("system", system_prompt),
-    MessagesPlaceholder(variable_name="history"),
-    ("human", "{input}"),
-])
 
 def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id: str = None):
 
@@ -146,8 +141,6 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
                 "cache_used": cached,
                 "cache_reason": cache_result.get("reason", None),
                 "rag_docs_count": len(docs),
-                "cache_used": cached,                              # ← log บอกว่าใช้ cache ไหม
-                "cache_reason": cache_result.get("reason", None), # ← log บอกเหตุผลถ้าไม่ได้ใช้
             },
         ) as generation:
 

@@ -1,12 +1,18 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Depends
 import tempfile
 import os
 from app.ai.rag import save_pdf_to_rag
+from app.dependencies import verify_jwt_auth
 
 router = APIRouter(prefix="/documents", tags=["document"])
 
 @router.post("/upload-pdf")
-async def upload_pdf(file: UploadFile = File(...), shop_id: str | None = "b5c79bc0-8e1b-46a7-a1d7-229b53f971de", title: str | None = None):
+async def upload_pdf(
+    file: UploadFile = File(...),
+    shop_id: str = None,
+    title: str | None = None,
+    auth: dict = Depends(verify_jwt_auth),
+):
     content = await file.read()
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
