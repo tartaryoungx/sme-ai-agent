@@ -3,7 +3,10 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langfuse import Langfuse, propagate_attributes
 from app.config import settings
-from app.ai.cache_manager import get_or_create_cache  # ← เพิ่ม
+from app.ai.cache_manager import get_or_create_cache
+from app.ai.rag import search_docs
+from app.services.token_usage import log_token_usage
+from app.ai.semantic_cache import get_cached_answer, store_in_cache
 from app.ai.rag import retrieve_top_k
 
 langfuse = Langfuse(
@@ -46,11 +49,47 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     sid = session_id or user_id or "default"
     history = get_history(sid)
 
+
+    try:
+        semantic_answer = get_cached_answer(shop_id or "default", message)
+        if semantic_answer:
+            print(f"[SEMANTIC CACHE HIT] shop={shop_id} → return cached answer")
+            save_history(sid, message, semantic_answer)
+            return {
+                "text": semantic_answer,
+                "session_id": sid,
+                "cache_used": False,
+                "semantic_cache_hit": True,
+            }
+    except Exception as e:
+        print(f"[SEMANTIC CACHE ERROR] {e}")
+
     cache_result = get_or_create_cache(shop_id or "default")
     cache_name = cache_result["cache_name"]
     cached = cache_result["cached"]
     knowledge_base = cache_result.get("knowledge_base", "")
 
+    rag_context = ""
+    docs = [] 
+    try:
+        docs = search_docs(shop_id or "default", message, match_count=3)
+        print(f"[RAG] shop={shop_id} query='{message[:50]}' found={len(docs)} docs")
+        if docs:
+            print(f"[RAG DEBUG] doc[0] keys={list(docs[0].keys())}, content repr={repr(docs[0].get('content', 'KEY_NOT_FOUND'))}")
+            rag_context = "\n".join(
+                f"- {d['content']}" for d in docs if d.get("content")
+            )
+            print(f"[RAG CONTEXT built] len={len(rag_context)}, preview={repr(rag_context[:100])}")
+        else:
+            print(f"[RAG] No matching documents found for shop={shop_id}")
+    except Exception as e:
+        import traceback
+        print(f"[RAG ERROR] {e}")
+        traceback.print_exc()
+
+    full_system_prompt = system_prompt
+    if not cached and knowledge_base:
+        full_system_prompt += f"\n\n[ข้อมูลของร้าน — ใช้ข้อมูลนี้ตอบลูกค้า]:\n{knowledge_base}"
     #tartar =========================================================
     rag_chunks = retrieve_top_k(message, shop_id, k=3) if shop_id else []
 
@@ -140,10 +179,17 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             langfuse.flush()
     save_history(sid, message, reply)
 
+
+    try:
+        store_in_cache(shop_id or "default", message, reply)
+    except Exception as e:
+        print(f"[SEMANTIC CACHE STORE ERROR] {e}")
+
     return {
         "text": reply,
         "session_id": sid,
         "cache_used": cached,
+        "semantic_cache_hit": False,
         "rag_used": bool(rag_context),
         "rag_chunks_count": len(rag_chunks),
         "top_1_rag": top_1_rag_content,
