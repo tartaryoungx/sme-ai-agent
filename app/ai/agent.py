@@ -25,19 +25,9 @@ def ask_agent(user_input: str, shop_id: str = None, user_id: str = None, session
     history = get_history(sid) #history prompt
 
 
-    try:
-        semantic_answer = get_cached_answer(shop_id or "default", message)
-        if semantic_answer:
-            print(f"[SEMANTIC CACHE HIT] shop={shop_id} → return cached answer")
-            save_history(sid, message, semantic_answer)
-            return {
-                "text": semantic_answer,
-                "session_id": sid,
-                "cache_used": False,
-                "semantic_cache_hit": True,
-            }
-    except Exception as e:
-        print(f"[SEMANTIC CACHE ERROR] {e}")
+    semantic_result = try_semantic_cache(user_input, shop_id, sid)
+    if semantic_result:
+        return semantic_result
 
     cache_result = get_or_create_cache(shop_id or "default")
     cache_name = cache_result["cache_name"] #refference cache
@@ -79,7 +69,7 @@ def ask_agent(user_input: str, shop_id: str = None, user_id: str = None, session
     # Flash-Lite ($0.10/MTok) สำหรับคำถามง่าย
     # Flash      ($0.30/MTok) สำหรับคำถามซับซ้อน
     # ═══════════════════════════════════════════════════════
-    selected_model = route_model(message)
+    selected_model = route_model(user_input)
 
     # Context cache ใช้ได้เฉพาะ Flash-Lite เท่านั้น
     cache_kwargs = (
@@ -109,6 +99,7 @@ def ask_agent(user_input: str, shop_id: str = None, user_id: str = None, session
     cached=cached,
     cache_name=cache_name,
     cache_result=cache_result,
+    selected_model=selected_model,
     )
     reply = result.content
     save_history(sid, user_input, reply)
@@ -144,6 +135,7 @@ def langfuse_with_invoke(
     cached: bool,
     cache_name: str | None,
     cache_result: dict,
+    selected_model
 ):
     sid = session_id or user_id or "default"
     invoke_input = {
@@ -221,3 +213,29 @@ def langfuse_with_invoke(
             langfuse.flush()
 
             return result
+
+def try_semantic_cache(
+    user_input: str,
+    shop_id: str | None,
+    sid: str,
+) -> dict | None:
+    try:
+        semantic_answer = get_cached_answer(shop_id or "default", user_input)
+
+        if not semantic_answer:
+            return None
+
+        print(f"[SEMANTIC CACHE HIT] shop={shop_id} → return cached answer")
+
+        save_history(sid, user_input, semantic_answer)
+
+        return {
+            "text": semantic_answer,
+            "session_id": sid,
+            "cache_used": False,
+            "semantic_cache_hit": True,
+        }
+
+    except Exception as e:
+        print(f"[SEMANTIC CACHE ERROR] {e}")
+        return None
