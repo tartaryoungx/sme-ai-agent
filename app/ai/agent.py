@@ -7,7 +7,7 @@ from app.ai.cache_manager import get_or_create_cache
 from app.services.token_usage import log_token_usage
 from app.ai.semantic_cache import get_cached_answer, store_in_cache
 from app.ai.model_router import route_model, MODEL_LITE, MODEL_FLASH
-from app.ai.rag import retrieve_top_k
+from app.ai.rag import retrieve_rag_context
 
 langfuse = Langfuse(
     public_key=settings.LANGFUSE_PUBLIC_KEY,
@@ -18,31 +18,11 @@ langfuse = Langfuse(
 _memory_store: dict[str, list[BaseMessage]] = {}
 MAX_HISTORY = 20
 
-def get_history(session_id: str) -> list[BaseMessage]:
-    return _memory_store.setdefault(session_id, [])
 
-def save_history(session_id: str, human_msg: str, ai_msg: str) -> None:
-    history = get_history(session_id)
-    history.append(HumanMessage(content=human_msg))
-    history.append(AIMessage(content=ai_msg))
-    if len(history) > MAX_HISTORY:
-        _memory_store[session_id] = history[-MAX_HISTORY:]
-
-system_prompt = """คุณคือแอดมินขายสินค้า SME
-กฎ:
-- ตอบเป็นภาษาไทย
-- ตอบไม่เกิน 3 ประโยค
-- ถ้าถามเรื่องราคา ให้ตอบราคาโดยตรง
-- ถ้าข้อมูลไม่พอ ให้ถามกลับ 1 คำถาม
-- ห้ามเขียนเกิน 100 คำ
-- น้ำเสียงเป็นธรรมชาติ เป็นมิตร และเน้นช่วยปิดการขาย
-- ไม่ต้องใส่อีโมจิและสัญลักษณ์พิเศษใดๆ"""
-
-
-def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id: str = None):
+def ask_agent(user_input: str, shop_id: str = None, user_id: str = None, session_id: str = None):
 
     sid = session_id or user_id or "default"
-    history = get_history(sid)
+    history = get_history(sid) #history prompt
 
 
     try:
@@ -60,32 +40,14 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
         print(f"[SEMANTIC CACHE ERROR] {e}")
 
     cache_result = get_or_create_cache(shop_id or "default")
-    cache_name = cache_result["cache_name"]
-    cached = cache_result["cached"]
-    knowledge_base = cache_result.get("knowledge_base", "")
-
-    docs = []
-
-    full_system_prompt = system_prompt
-    if not cached and knowledge_base:
-        full_system_prompt += f"\n\n[ข้อมูลของร้าน — ใช้ข้อมูลนี้ตอบลูกค้า]:\n{knowledge_base}"
+    cache_name = cache_result["cache_name"] #refference cache
+    cached = cache_result["cached"] #yes or no
+    #knowledge_base = cache_result.get("knowledge_base", "")
+    RAG_doc_prompt = ""
     #tartar =========================================================
-    rag_chunks = retrieve_top_k(message, shop_id, k=3) if shop_id else []
-
-    rag_context = "\n\n".join(
-        f"[ข้อมูล {i+1}]\n{chunk.get('content', '')}"
-        for i, chunk in enumerate(rag_chunks)
-        if chunk.get("content")
-    )
-    top_1_rag_content = rag_chunks[0].get("content") if rag_chunks else None
-    #tartar =========================================================
-
-    # build system prompt ตาม cache status
-    full_system_prompt = system_prompt
-
-    #tartar =========================================================
+    rag_context = retrieve_rag_context(user_input, shop_id)
     if rag_context:
-        full_system_prompt += f"""
+        RAG_doc_prompt += f"""
 
     ข้อมูลอ้างอิงจากร้าน:
     {rag_context}
@@ -97,14 +59,19 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
     """
     #tartar =========================================================
 
-    if not cached and knowledge_base:
+    #if not cached and knowledge_base:
         # fallback: inject knowledge base เข้า prompt ตรงๆ
-        full_system_prompt += f"\n\nข้อมูลของร้าน:\n{knowledge_base}"
+    #    full_system_prompt += f"\n\nข้อมูลของร้าน:\n{knowledge_base}"
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", full_system_prompt),
         MessagesPlaceholder(variable_name="history"),
-        ("human", "{input}"),
+        ("human", """
+        User question:
+        {input}
+
+        Relevant documents:
+        {rag}
+        """),
     ])
 
     # ═══════════════════════════════════════════════════════
@@ -130,6 +97,76 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
 
     chain = prompt | llm
 
+    result = langfuse_with_invoke(
+    prompt=prompt,
+    chain=chain,
+    user_input=user_input,
+    history=history,
+    rag_prompt=RAG_doc_prompt,
+    user_id=user_id,
+    session_id=session_id,
+    shop_id=shop_id,
+    cached=cached,
+    cache_name=cache_name,
+    cache_result=cache_result,
+    )
+    reply = result.content
+    save_history(sid, user_input, reply)
+
+    return {
+        "text": reply,
+        "session_id": sid,
+        "cache_used": cached,
+        "rag_used": bool(rag_context),
+    }
+
+def get_history(session_id: str) -> list[BaseMessage]:
+    return _memory_store.setdefault(session_id, [])
+
+
+
+def save_history(session_id: str, human_msg: str, ai_msg: str) -> None:
+    history = get_history(session_id)
+    history.append(HumanMessage(content=human_msg))
+    history.append(AIMessage(content=ai_msg))
+    if len(history) > MAX_HISTORY:
+        _memory_store[session_id] = history[-MAX_HISTORY:]
+
+def langfuse_with_invoke(
+    prompt,
+    chain,
+    user_input: str,
+    history,
+    rag_prompt: str,
+    user_id: str,
+    session_id: str,
+    shop_id: str,
+    cached: bool,
+    cache_name: str | None,
+    cache_result: dict,
+):
+    sid = session_id or user_id or "default"
+    invoke_input = {
+        "input": user_input,
+        "history": history,
+        "rag": rag_prompt,
+    }    
+ # print prompt ที่ LangChain สร้างจริง ######TEST####
+    """
+    prompt_value = prompt.invoke(invoke_input)
+
+    print("\n===== CACHE =====")
+    print(f"cache_used: {cached}")
+    print(f"cache_name: {cache_name}")
+    print(f"cache_reason: {cache_result.get('reason')}")
+
+    print("\n===== PROMPT SENT TO LLM (not include cached content text) =====")
+    for msg in prompt_value.to_messages():
+        print(f"\n[{msg.type}]")
+        print(msg.content)    
+    """
+    print(f"[SID] {sid}")
+    print(history)
     with propagate_attributes(user_id=user_id, session_id=sid):
         with langfuse.start_as_current_observation(
             as_type="generation",
@@ -137,36 +174,33 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             model=selected_model,
             metadata={
                 "shop_id": shop_id,
-                "model_selected": selected_model,
                 "cache_used": cached,
-                "cache_reason": cache_result.get("reason", None),
-                "rag_docs_count": len(docs),
+                "cache_reason": cache_result.get("reason"),
             },
         ) as generation:
 
-            result = chain.invoke({
-                "input": message,
-                "history": history,
-            })
+            result = chain.invoke(invoke_input)
+
             reply = result.content
 
-            # ดึง token usage จาก LangChain AIMessage.usage_metadata
-            usage_meta    = result.usage_metadata or {}
-            input_tokens  = usage_meta.get("input_tokens", 0)
-            output_tokens = usage_meta.get("output_tokens", 0)
-            cached_tokens = (usage_meta.get("input_token_details") or {}).get("cache_read", 0)
+            usage = result.usage_metadata or {}
+            input_tokens = usage.get("input_tokens", 0)
+            output_tokens = usage.get("output_tokens", 0)
+            cached_tokens = (
+                usage.get("input_token_details") or {}
+            ).get("cache_read", 0)
 
             generation.update(
-                input=message,
+                input=user_input,
                 output=reply,
                 usage_details={
-                    "input":  input_tokens,
+                    "input": input_tokens,
                     "output": output_tokens,
-                    "total":  input_tokens + output_tokens,
+                    "total": input_tokens + output_tokens,
                 },
                 metadata={
-                    "shop_id":       shop_id,
-                    "cache_used":    cached,
+                    "shop_id": shop_id,
+                    "cache_used": cached,
                     "cached_tokens": cached_tokens,
                 },
             )
@@ -185,21 +219,5 @@ def ask_agent(message: str, shop_id: str = None, user_id: str = None, session_id
             )
 
             langfuse.flush()
-    save_history(sid, message, reply)
 
-
-    try:
-        store_in_cache(shop_id or "default", message, reply)
-    except Exception as e:
-        print(f"[SEMANTIC CACHE STORE ERROR] {e}")
-
-    return {
-        "text": reply,
-        "session_id": sid,
-        "cache_used": cached,
-        "semantic_cache_hit": False,
-        "model_used": selected_model,
-        "rag_used": bool(rag_context),
-        "rag_chunks_count": len(rag_chunks),
-        "top_1_rag": top_1_rag_content,
-    }
+            return result

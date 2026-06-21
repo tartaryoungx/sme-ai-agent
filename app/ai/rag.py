@@ -251,3 +251,15 @@ def retrieve_top_k(query: str, shop_id: str | None, k: int = 3) -> list[dict]:
     ).execute()
 
     return res.data or []
+
+
+def retrieve_rag_context(query: str, shop_id: str | None, k: int = 3) -> str:
+    chunks = retrieve_top_k(query, shop_id, k)
+
+    texts = []
+    for i, chunk in enumerate(chunks):
+        content = chunk.get("content")
+        if content:
+            texts.append(f"[ข้อมูล {i+1}]\n{content}")
+
+    return "\n\n".join(texts)
