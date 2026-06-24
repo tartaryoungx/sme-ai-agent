@@ -104,6 +104,13 @@ def ask_agent(user_input: str, shop_id: str = None, user_id: str = None, session
     reply = result.content
     save_history(sid, user_input, reply)
 
+    # เก็บคำถาม+คำตอบใหม่เข้า semantic cache
+    if shop_id:
+        try:
+            store_in_cache(shop_id, user_input, reply)
+        except Exception as e:
+            print(f"[SEMANTIC CACHE STORE ERROR] {e}")
+
     return {
         "text": reply,
         "session_id": sid,
@@ -158,7 +165,6 @@ def langfuse_with_invoke(
         print(msg.content)    
     """
     print(f"[SID] {sid}")
-    print(history)
     with propagate_attributes(user_id=user_id, session_id=sid):
         with langfuse.start_as_current_observation(
             as_type="generation",

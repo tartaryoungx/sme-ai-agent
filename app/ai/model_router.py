@@ -12,17 +12,20 @@ COMPLEX_KEYWORDS = [
     "ขั้นตอน", "วิธีทำ", "แผน", "กลยุทธ์",
 ]
 
-MAX_WORDS_FOR_LITE = 30   # ถ้าถามยาวกว่านี้ → Flash
+# ภาษาไทยไม่มี whitespace ระหว่างคำ → ใช้จำนวนตัวอักษรแทน
+# ~120 ตัวอักษร ≈ 30 คำภาษาไทย (เฉลี่ยคำละ ~4 ตัวอักษร)
+MAX_CHARS_FOR_LITE = 120
 
 def route_model(message: str) -> str:
 
-
     msg_lower = message.lower().strip()
 
-    word_count = len(message.split())
-    if word_count > MAX_WORDS_FOR_LITE:
-        print(f"[ROUTER] Flash — long message ({word_count} words)")
+    # ใช้ len() นับตัวอักษรแทน split() ที่ใช้ไม่ได้กับภาษาไทย
+    char_count = len(message)
+    if char_count > MAX_CHARS_FOR_LITE:
+        print(f"[ROUTER] Flash — long message ({char_count} chars)")
         return MODEL_FLASH
+
 
     for kw in COMPLEX_KEYWORDS:
         if kw in msg_lower:

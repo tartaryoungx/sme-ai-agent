@@ -14,10 +14,13 @@ class ProductCreate(BaseModel):
 
 @router.post("/products")
 async def create_product(
-    shop_id: str,
     payload: ProductCreate,
     auth: dict = Depends(verify_jwt_auth)
 ):
+    shop_id = auth.get("shop_id")
+    if not shop_id:
+        raise HTTPException(status_code=403, detail="shop_id not found in token")
+
     result = supabase.table("products").insert({
         "shop_id": shop_id,
         **payload.model_dump()
@@ -40,10 +43,13 @@ class FAQCreate(BaseModel):
 
 @router.post("/faqs")
 async def create_faq(
-    shop_id: str,
     payload: FAQCreate,
     auth: dict = Depends(verify_jwt_auth)
 ):
+    shop_id = auth.get("shop_id")
+    if not shop_id:
+        raise HTTPException(status_code=403, detail="shop_id not found in token")
+
     result = supabase.table("faqs").insert({
         "shop_id": shop_id,
         **payload.model_dump()
@@ -96,6 +102,9 @@ async def get_policy(shop_id: str):
     result = supabase.table("shop_policies")\
         .select("*")\
         .eq("shop_id", shop_id)\
-        .single()\
         .execute()
-    return result.data
+
+    if not result.data:
+        return None
+
+    return result.data[0]

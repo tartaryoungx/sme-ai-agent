@@ -6,7 +6,11 @@ app = FastAPI(title="SME AI Agent" , version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8080",
+        # เพิ่ม production domain ที่นี่ เช่น "https://yourapp.com"
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True

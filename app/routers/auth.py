@@ -50,11 +50,17 @@ async def register(payload: RegisterRequest):
         raise HTTPException(status_code=404, detail="Shop not found")
 
     hashed = hash_password(payload.password)
-    result = supabase.table("users").insert({
-        "email": payload.email,
-        "password_hash": hashed,
-        "shop_id": payload.shop_id,
-    }).execute()
+    try:
+        result = supabase.table("users").insert({
+            "email": payload.email,
+            "password_hash": hashed,
+            "shop_id": payload.shop_id,
+        }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to create user")
+
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to create user")
 
     user = result.data[0]
     token = create_token(user["id"], payload.shop_id)
@@ -66,13 +72,12 @@ async def login(payload: LoginRequest):
     result = supabase.table("users")\
         .select("id, shop_id, password_hash")\
         .eq("email", payload.email)\
-        .single()\
         .execute()
 
     if not result.data:
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    user = result.data
+    user = result.data[0]
 
     if not verify_password(payload.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
